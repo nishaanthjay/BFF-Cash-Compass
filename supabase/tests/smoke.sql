@@ -43,6 +43,16 @@ begin
   begin perform fac_create_session('test-pass', 'NEW01', array['bogus'], null); raise exception 'FAIL: bad module accepted';
   exception when raise_exception then if sqlerrm not like 'invalid:%' then raise; end if; end;
 
+  begin perform fac_create_session('test-pass', 'SHORT1', array['skill','feasibility','hybrid'], null, array['S1','bogus']); raise exception 'FAIL: bad problem id accepted';
+  exception when raise_exception then if sqlerrm not like 'invalid:%' then raise; end if; end;
+  declare sh sessions; jj record;
+  begin
+    sh := fac_create_session('test-pass', 'SHORT1', array['skill','feasibility','hybrid'], null, array['S1','S11A','S11B','F2','H1']);
+    select * into jj from join_session('short1');
+    if jj.problem_ids <> array['S1','S11A','S11B','F2','H1'] then raise exception 'FAIL: problem_ids not returned by join'; end if;
+    perform fac_close_session('test-pass', sh.id);
+  end;
+
   select * into j from join_session('tx014');
   if j.session_id is distinct from s.id or j.modules <> array['skill', 'feasibility'] then raise exception 'FAIL: join_session'; end if;
 

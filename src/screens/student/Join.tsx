@@ -84,7 +84,7 @@ export function Join() {
       const run = makeRun(joined, studentCode, locked);
       saveRun(kv, run);
       if (!resume) {
-        const expected = problemsFor(joined.modules).reduce((a, p) => a + stepsFor(p, run.forms).length, 0);
+        const expected = problemsFor(joined.modules, joined.problem_ids).reduce((a, p) => a + stepsFor(p, run.forms).length, 0);
         queue.addStudent({ student_code: studentCode, session_id: joined.session_id, forms: run.forms, device_type: deviceType(), expected_steps: expected, started_at: run.started_at });
         void syncNow();
       }
@@ -95,7 +95,7 @@ export function Join() {
     }
   }
 
-  const minutes = joined ? estimateMinutes(problemsFor(joined.modules)) : null;
+  const minutes = joined ? estimateMinutes(problemsFor(joined.modules, joined.problem_ids)) : null;
 
   return (
     <StudentShell decor="landing" wiggle>

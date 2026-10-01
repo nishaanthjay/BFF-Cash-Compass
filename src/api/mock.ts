@@ -68,7 +68,7 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         const c = normalizeChapter(code);
         const s = all().sessions.find((x) => x.chapter_code === c && x.status === 'open');
         if (!s) throw new ApiError('not_found', 'No open session for that chapter code');
-        return { session_id: s.id, chapter_code: s.chapter_code, cohort_label: s.cohort_label, modules: s.modules };
+        return { session_id: s.id, chapter_code: s.chapter_code, cohort_label: s.cohort_label, modules: s.modules, problem_ids: s.problem_ids ?? [] };
       }),
 
     resumeStudent: (sessionId, code) =>
@@ -122,14 +122,14 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
 
     verifyPasscode: (p) => call(() => p === DEMO_PASSCODE),
 
-    createSession: (p, code, modules: Module[], cohort) =>
+    createSession: (p, code, modules: Module[], cohort, problemIds = []) =>
       call(() => {
         auth(p);
         const c = normalizeChapter(code);
         if (!CHAPTER_CODE.test(c)) throw new ApiError('invalid', 'Chapter codes are 3–10 letters or numbers');
         if (!modules.length) throw new ApiError('invalid', 'Pick at least one module');
         if (all().sessions.some((s) => s.chapter_code === c && s.status === 'open')) throw new ApiError('chapter_busy', 'That chapter already has an open session');
-        const s: Session = { id: uuid(), chapter_code: c, cohort_label: cohort?.trim() || null, modules, status: 'open', created_at: new Date(now()).toISOString(), closed_at: null };
+        const s: Session = { id: uuid(), chapter_code: c, cohort_label: cohort?.trim() || null, modules, problem_ids: problemIds, status: 'open', created_at: new Date(now()).toISOString(), closed_at: null };
         live.sessions.push(s);
         return s;
       }),

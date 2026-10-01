@@ -14,8 +14,31 @@ export function getProblem(id: string): Problem | undefined {
   return byId.get(id);
 }
 
-export function problemsFor(modules: Module[]): Problem[] {
+/** A session's problems: the exact `ids` when given (a short session), otherwise every active problem in the modules. */
+export function problemsFor(modules: Module[], ids: string[] = []): Problem[] {
+  if (ids.length) return ALL_PROBLEMS.filter((p) => p.active && ids.includes(p.id));
   return ALL_PROBLEMS.filter((p) => p.active && modules.includes(p.module));
+}
+
+export const SHORT_SESSION_SIZE = 5;
+
+/** One pick in the facilitator's list: problems that share a form key (S11A + S11B) always travel together. */
+export interface PickUnit {
+  key: string;
+  title: string;
+  ids: string[];
+  module: Module;
+}
+
+export function pickUnits(): PickUnit[] {
+  const units = new Map<string, PickUnit>();
+  for (const p of ALL_PROBLEMS.filter((x) => x.active)) {
+    const key = p.form ? p.form.key : p.id;
+    const u = units.get(key);
+    if (u) u.ids.push(p.id);
+    else units.set(key, { key, title: p.form && key !== p.id ? `${key} · ${p.title.split(' · ')[0]}` : `${p.id} · ${p.title}`, ids: [p.id], module: p.module });
+  }
+  return [...units.values()];
 }
 
 export function getStep(problemId: string, stepId: string): Step | undefined {

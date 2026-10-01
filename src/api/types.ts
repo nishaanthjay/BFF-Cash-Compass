@@ -14,6 +14,8 @@ export interface Session {
   chapter_code: string;
   cohort_label: string | null;
   modules: Module[];
+  /** Exact problems for a short session (e.g. 5 picked or random). Empty/absent = everything in `modules`. */
+  problem_ids?: string[];
   status: SessionStatus;
   created_at: string;
   closed_at: string | null;
@@ -32,6 +34,7 @@ export interface JoinedSession {
   chapter_code: string;
   cohort_label: string | null;
   modules: Module[];
+  problem_ids?: string[];
 }
 
 export interface StudentRow {
@@ -122,7 +125,7 @@ export interface ApiClient {
   sync(deviceToken: string, students: StudentRow[], answers: AnswerRow[]): Promise<SyncResult>;
   // Facilitator (single shared passcode)
   verifyPasscode(passcode: string): Promise<boolean>;
-  createSession(passcode: string, chapterCode: string, modules: Module[], cohortLabel: string | null): Promise<Session>;
+  createSession(passcode: string, chapterCode: string, modules: Module[], cohortLabel: string | null, problemIds?: string[]): Promise<Session>;
   openSessions(passcode: string): Promise<OpenSession[]>;
   sessionStats(passcode: string, sessionId: string): Promise<SessionStats & { status: SessionStatus }>;
   closeSession(passcode: string, sessionId: string): Promise<void>;

@@ -4,9 +4,10 @@ import type { ExportData } from '../../api/types';
 import { ChartCard } from '../../components/ChartCard';
 import { Select } from '../../components/Select';
 import { applyFilters, studentKey } from '../../lib/analysis';
-import { compounding, feasibility, gapMap, instrumentQuality, methodComparison, problemScores, radar, studentSteps, teachFirst, unkRows, type RadarPoint } from '../../lib/crossItem';
+import { biasByProblem, compounding, feasibility, medianSeconds, workshopTrend, gapMap, instrumentQuality, methodComparison, problemScores, radar, studentSteps, teachFirst, unkRows, type RadarPoint } from '../../lib/crossItem';
 import { ALL_PROBLEMS } from '../../items';
 import { CODES, FAMILY_LABELS, type Code } from '../../items/families';
+import { BiasBars, Lollipops, TrendLine } from '../../charts/Stage5';
 import { color, fontPx } from '../../styles/tokens';
 import type { Dashboard } from './useDashboard';
 import s from './CrossItem.module.css';
@@ -32,6 +33,9 @@ function Teach({ d, data, scores, date }: { d: Dashboard; data: ExportData; scor
   const comp = compounding(data, d.rc, d.minCell);
   const feas = feasibility(data, d.rc, d.minCell);
   const n = new Set(data.responses.map(studentKey)).size;
+  const bias = biasByProblem(data, d.minCell);
+  const trend = workshopTrend(d.data ?? data, d.rc, d.minCell);
+  const secs = medianSeconds(data, d.minCell);
   const pretty = (c: string) => (CODES[c as Code] ? CODES[c as Code].label : c);
   return (
     <div className={s.grid}>
@@ -69,6 +73,17 @@ function Teach({ d, data, scores, date }: { d: Dashboard; data: ExportData; scor
           <span>overall</span>
         </div>
         <Bars rows={feas.perItem.filter((r) => r.rate !== null).map((r) => ({ label: `${r.id} · ${r.title}`, v: r.rate as number }))} />
+      </ChartCard>
+      <div className={s.wide}>
+        <ChartCard title="Which way do students miss?" subtitle="Typical answer vs the correct value, by problem." n={bias.reduce((a, b) => Math.max(a, b.n), 0)} date={date}>
+          <BiasBars items={bias} />
+        </ChartCard>
+      </div>
+      <ChartCard title="Workshop trend" subtitle="Share correct on each problem's first question, by workshop, oldest first." n={trend.reduce((a, b) => a + b.n, 0)} date={date} footnote="Workshops differ in who attended and which problems they used, so treat a rise or fall as a prompt to look, not a result.">
+        <TrendLine points={trend} />
+      </ChartCard>
+      <ChartCard title="Time on the first question" subtitle="Median seconds to lock an answer, slowest first." n={secs.reduce((a, b) => Math.max(a, b.n), 0)} date={date} footnote="Exploratory: reading speed, device and wifi all change this.">
+        <Lollipops rows={secs.slice(0, 12).map((r) => ({ label: `${r.id} · ${r.title.length > 22 ? `${r.title.slice(0, 20)}…` : r.title}`, v: r.seconds }))} unit="s" />
       </ChartCard>
       <div className={s.wide}>
         <ChartCard title="Gap map" subtitle="Share correct, by problem and skill family. Darker = more correct." n={n} date={date} footnote="Gray = the problem is not tagged with that family, or too few students.">

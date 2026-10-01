@@ -6,7 +6,7 @@ import type { RunState } from '../../lib/run';
 
 /** Build a fresh (or resumed) run for a student code. Same code → same order and forms. */
 export function makeRun(joined: JoinedSession, studentCode: string, locked: string[] = []): RunState {
-  const problems = problemsFor(joined.modules);
+  const problems = problemsFor(joined.modules, joined.problem_ids);
   const forms = assignForms(problems, studentCode);
   const { ids } = buildOrder(problems, studentCode, orderPairs(problems, forms));
   const lockedSet = new Set(locked);

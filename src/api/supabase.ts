@@ -27,14 +27,14 @@ export function createSupabaseApi(url: string, anonKey: string): ApiClient {
   return {
     mode: 'supabase',
     joinSession: async (code) => {
-      const rows = await rpc<{ session_id: string; chapter_code: string; cohort_label: string | null; modules: string[] }[]>('join_session', { p_chapter: normalizeChapter(code) });
+      const rows = await rpc<{ session_id: string; chapter_code: string; cohort_label: string | null; modules: string[]; problem_ids: string[] }[]>('join_session', { p_chapter: normalizeChapter(code) });
       if (!rows?.length) throw new ApiError('not_found');
       return rows[0] as never;
     },
     resumeStudent: (sessionId, code) => rpc('resume_student', { p_session_id: sessionId, p_student_code: code }),
     sync: (token, students, answers) => rpc('sync_answers', { p_device_token: token, p_students: students, p_answers: answers }),
     verifyPasscode: (p) => rpc<boolean>('fac_verify', { p_passcode: p }),
-    createSession: (p, code, modules, cohort) => rpc<Session>('fac_create_session', { p_passcode: p, p_chapter: normalizeChapter(code), p_modules: modules, p_cohort: cohort }),
+    createSession: (p, code, modules, cohort, problemIds = []) => rpc<Session>('fac_create_session', { p_passcode: p, p_chapter: normalizeChapter(code), p_modules: modules, p_cohort: cohort, p_problems: problemIds }),
     openSessions: (p) => rpc<OpenSession[]>('fac_open_sessions', { p_passcode: p }),
     sessionStats: (p, id) => rpc('fac_session_stats', { p_passcode: p, p_session_id: id }),
     closeSession: async (p, id) => {

@@ -234,3 +234,90 @@ export function methodComparison(data: ExportData, rc: RecodeMap): { method: str
   }
   return [...groups.entries()].map(([method, rows]) => ({ method, n: rows.length, correct: rows.length ? rows.filter((r) => isCorr(r, rc)).length / rows.length : null }));
 }
+
+const medianOf = (xs: number[]): number | null => {
+  if (!xs.length) return null;
+  const a = [...xs].sort((x, y) => x - y);
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+};
+
+/** Cumulative share of answers at or below each value (step function), sorted. */
+export function ecdf(values: number[]): { x: number; p: number }[] {
+  const a = [...values].sort((x, y) => x - y);
+  return a.map((x, i) => ({ x, p: (i + 1) / a.length }));
+}
+
+export interface BoxStats {
+  n: number;
+  p10: number;
+  q1: number;
+  median: number;
+  q3: number;
+  p90: number;
+}
+
+const q = (a: number[], f: number) => {
+  const pos = (a.length - 1) * f;
+  const lo = Math.floor(pos);
+  return a[lo] + (a[Math.min(a.length - 1, lo + 1)] - a[lo]) * (pos - lo);
+};
+
+/** Box plot numbers: whiskers are the 10th and 90th percentiles (not min/max, so one wild answer doesn't squash the box). */
+export function boxStats(values: number[]): BoxStats | null {
+  if (values.length < 5) return null;
+  const a = [...values].sort((x, y) => x - y);
+  return { n: a.length, p10: q(a, 0.1), q1: q(a, 0.25), median: q(a, 0.5), q3: q(a, 0.75), p90: q(a, 0.9) };
+}
+
+export interface Bias {
+  id: string;
+  title: string;
+  n: number;
+  /** Median log10(answer ÷ correct): below 0 = students guess low, above 0 = high. 1 = ten times too high. */
+  value: number;
+}
+
+/** Which way, and how far, students miss on each problem's headline question (positive-valued answers only). */
+export function biasByProblem(data: ExportData, minCell = 0): Bias[] {
+  const out: Bias[] = [];
+  for (const p of ALL_PROBLEMS) {
+    const st = headlineStep(p);
+    if (typeof st.correct !== 'number' || st.correct <= 0) continue;
+    const xs = data.responses.filter((r) => r.item_id === p.id && r.step_id === st.id && r.raw_value !== null && r.raw_value > 0).map((r) => Math.log10((r.raw_value as number) / (st.correct as number)));
+    const m = medianOf(xs);
+    if (m !== null && xs.length >= Math.max(5, minCell)) out.push({ id: p.id, title: p.title, n: xs.length, value: m });
+  }
+  return out.sort((a, b) => a.value - b.value);
+}
+
+export interface TrendPoint {
+  label: string;
+  value: number | null;
+  n: number;
+}
+
+/** Share correct across every problem's headline step, per workshop, oldest first. */
+export function workshopTrend(data: ExportData, rc: RecodeMap, minCell = 0): TrendPoint[] {
+  const heads = new Set(ALL_PROBLEMS.map((p) => `${p.id}.${headlineStep(p).id}`));
+  return [...data.sessions]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((s) => {
+      const rows = scored(data.responses.filter((r) => r.session_id === s.id && heads.has(`${r.item_id}.${r.step_id}`)), rc);
+      const n = new Set(data.responses.filter((r) => r.session_id === s.id).map((r) => r.student_code)).size;
+      return { label: s.chapter_code, value: rows.length && n >= Math.max(1, minCell) ? rows.filter((r) => isCorr(r, rc)).length / rows.length : null, n };
+    })
+    .filter((p) => p.n > 0);
+}
+
+/** Median seconds to lock the headline question, per problem. Exploratory: reading speed and device matter. */
+export function medianSeconds(data: ExportData, minCell = 0): { id: string; title: string; n: number; seconds: number }[] {
+  const out: { id: string; title: string; n: number; seconds: number }[] = [];
+  for (const p of ALL_PROBLEMS) {
+    const st = headlineStep(p);
+    const xs = data.responses.filter((r) => r.item_id === p.id && r.step_id === st.id && r.time_to_lock_ms !== null).map((r) => (r.time_to_lock_ms as number) / 1000);
+    const m = medianOf(xs);
+    if (m !== null && xs.length >= Math.max(5, minCell)) out.push({ id: p.id, title: p.title, n: xs.length, seconds: Math.round(m * 10) / 10 });
+  }
+  return out.sort((a, b) => b.seconds - a.seconds);
+}

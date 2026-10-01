@@ -30,7 +30,7 @@ the demo database in localStorage. "Reset demo data" restores the seed.
 
 ## How it works
 
-1. **Facilitator** starts a session for a chapter code and picks modules (Skill, Feasibility, Hybrid). The screen shows the code,
+1. **Facilitator** starts a session for a chapter code and chooses the questions: **Random 5** (we draw 5 problems for the whole group, with a Shuffle button), **I'll pick 5**, or **Everything** (long). The same problems go to every student, so each chart has the full group's n. S11A/S11B always travel together as one pick. The screen shows the code,
    a QR code and live counts. Closing the session stops new answers.
 2. **Student** joins with the chapter code and gets a random **anonymous student code** to write down (it lets them resume
    on another device). Then one question per screen. **Lock answer** is final: no back button, **no feedback of any kind**,
@@ -45,6 +45,8 @@ the demo database in localStorage. "Reset demo data" restores the seed.
    | D1 Teach-first ranking, D2 gap map (problem × skill family), D3 class radar (workshop vs pooled), D4 compounding panel ("linear on 3 or more problems"), D5 believable-but-wrong rate | Teach first tab |
    | D6 student drilldown by anonymous code | Students tab |
    | D7 instrument quality (difficulty, discrimination), unmatched-answer recode tool, typed vs dragged | Quality tab |
+   | More views on every problem page (cumulative curve, box plot, answer-pattern donut) and on the Teach first tab (which way students miss, workshop trend, time per question) | Teach first tab and problem pages |
+   | Every chart card has an **Expand** button for a full-screen view (Esc closes) | everywhere |
    | D8 projector mode (checkbox in the scope card): no student codes, no recode tool, cells under 5 students hidden | everywhere |
 
 Every chart shows n and the date. Wrong-answer patterns are coded automatically (within ±1% of a predicted wrong value);
@@ -92,7 +94,7 @@ answers only for an **open** session, so leave sessions open a few minutes after
 
 ### 1. Supabase
 1. Create a free project.
-2. Run the migrations in `supabase/migrations/` in order (`0001` … `0004`), in the SQL editor or with `supabase db push`.
+2. Run the migrations in `supabase/migrations/` in order (`0001` … `0005`), in the SQL editor or with `supabase db push`.
 3. **Set the facilitator passcode** (the migration installs a placeholder):
    ```sql
    update public.app_config set passcode_hash = crypt('your-long-passcode', gen_salt('bf', 10));
@@ -187,7 +189,7 @@ supabase/                migrations + SQL smoke test
 ## Decisions and assumptions
 
 - **Single-phase.** Taken once; no PRE/POST/DELAYED.
-- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B.
+- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions).
 - **Join model.** Chapter code alone; one open session per chapter.
 - **Truth snapshot.** Each answer stores its correct value at answer time, so later item edits don't rewrite past results.
 - **Chart colours.** Correct = Ledger Blue, named wrong pattern = pink `#DB2777`, unclassified = gray, validated with a colour-vision check; shapes and labels carry meaning too. Gold marks the headline finding.

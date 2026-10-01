@@ -12,10 +12,11 @@ import { CardHeat, Donut, PairedPlot, QuadGrid, SplitBars, TileGrid, Waterfall }
 import { Scatter } from '../../charts/Scatter';
 import { CalendarHeat, PairTiles, Ridgeline, Sankey, Slope, SplitShare, TwoByTwo } from '../../charts/Stage3';
 import { Spaghetti } from '../../charts/Spaghetti';
+import { BoxPlot, Ecdf } from '../../charts/Stage5';
 import { correctOf, getProblem } from '../../items';
-import { FAMILY_LABELS } from '../../items/families';
+import { CODES, FAMILY_LABELS } from '../../items/families';
 import type { ChartSpec, Problem } from '../../items/types';
-import { averageRanks, bucketCounts, calendarIntensity, choiceOf, confidencePoints, correct2x2, correctByGroup, firstLastShares, pairPattern, ratioRows, sankey, spearman, valuesByForm, cardFrequency, choiceSplit, curvePoints, curveShape, joinSteps, pairedValues, quadrantCounts, ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows, vsReference, waterfall } from '../../lib/analysis';
+import { codeShares, averageRanks, bucketCounts, calendarIntensity, choiceOf, confidencePoints, correct2x2, correctByGroup, firstLastShares, pairPattern, ratioRows, sankey, spearman, valuesByForm, cardFrequency, choiceSplit, curvePoints, curveShape, joinSteps, pairedValues, quadrantCounts, ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows, vsReference, waterfall } from '../../lib/analysis';
 import { median } from '../../lib/logError';
 import { formatCode } from '../../lib/studentCode';
 import { formatUnit } from '../../lib/format';
@@ -70,11 +71,14 @@ function ItemView({ pass, lock }: { pass: string; lock: () => void }) {
           {reached(d.scoped, p.id) < d.minCell ? (
             <Card>Fewer than 5 students reached this problem, so it is hidden in projector mode.</Card>
           ) : (
-            <div className={s.grid2}>
-              {p.admin.map((c, i) => (
-                <ItemChart key={i} p={p} c={c} d={d} scope={scope} onSelect={d.projector ? undefined : setSel} />
-              ))}
-            </div>
+            <>
+              <div className={s.grid2}>
+                {p.admin.map((c, i) => (
+                  <ItemChart key={i} p={p} c={c} d={d} scope={scope} onSelect={d.projector ? undefined : setSel} />
+                ))}
+              </div>
+              <MoreViews p={p} d={d} scope={scope} />
+            </>
           )}
           {p.notes?.map((n) => (
             <p key={n} className={s.notes}>
@@ -488,4 +492,36 @@ function ItemChart({ p, c, d, scope, onSelect }: { p: Problem; c: ChartSpec; d: 
       );
     }
   }
+}
+
+/** Extra views of the problem's main numeric question: cumulative curve, box plot and answer-pattern donut. */
+function MoreViews({ p, d, scope }: { p: Problem; d: Dashboard; scope: string }) {
+  const main = p.admin.find((c): c is Extract<ChartSpec, { type: 'dots' }> => c.type === 'dots' && !!c.primary) ?? p.admin.find((c): c is Extract<ChartSpec, { type: 'dots' }> => c.type === 'dots');
+  if (!main) return null;
+  const st = p.steps.find((x) => x.id === main.step)!;
+  const axis = main.axis ?? (st.input.type === 'numberLine' || st.input.type === 'jar' ? st.input : null);
+  if (!axis) return null;
+  const rows = stepRows(d.scoped!, p.id, main.step);
+  const correct = typeof st.correct === 'number' ? st.correct : null;
+  const slices = codeShares(rows, d.rc).map((c) => ({ label: CODES[c.code].label, n: c.n, tone: (c.code === 'CORR' ? 'corr' : c.code === 'UNK' ? 'unk' : 'wrong') as 'corr' | 'unk' | 'wrong' }));
+  return (
+    <section aria-labelledby="more-h">
+      <h2 id="more-h" className="eyebrow" style={{ margin: '24px 0 12px' }}>
+        More views of “{st.label}”
+      </h2>
+      <div className={s.grid2}>
+        <ChartCard title="Cumulative answers" subtitle="What share of students answered at or below each value." n={rows.length} date={scope}>
+          <Ecdf rows={rows} axis={axis} correct={correct} />
+        </ChartCard>
+        <ChartCard title="Spread of answers" subtitle="Box plot: the middle half of students, and the typical answer." n={rows.length} date={scope}>
+          <BoxPlot rows={rows} axis={axis} correct={correct} />
+        </ChartCard>
+        {slices.length > 0 && (
+          <ChartCard title="Answer patterns" subtitle="Share of answers by pattern. An answer can carry more than one." n={rows.length} date={scope}>
+            <Donut slices={slices} />
+          </ChartCard>
+        )}
+      </div>
+    </section>
+  );
 }

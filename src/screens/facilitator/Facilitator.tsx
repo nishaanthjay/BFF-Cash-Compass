@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCheck, ListChecks, Play, Users } from 'lucide-react';
+import { CheckCheck, ListChecks, Play, Shuffle, Users } from 'lucide-react';
 import { api } from '../../api';
 import { ApiError, CHAPTER_CODE, normalizeChapter, type OpenSession, type SessionStats, type SessionStatus } from '../../api/types';
-import { estimateMinutes, problemsFor } from '../../items';
+import { estimateMinutes, pickUnits, problemsFor, SHORT_SESSION_SIZE, type PickUnit } from '../../items';
 import { MODULE_LABELS, type Module } from '../../items/types';
+
+const ALL_MODULES = Object.keys(MODULE_LABELS) as Module[];
+type Mode = 'random' | 'pick' | 'all';
+const draw = (units: PickUnit[]) =>
+  [...units]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, SHORT_SESSION_SIZE)
+    .map((u) => u.key);
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { FieldError } from '../../components/FieldError';
@@ -49,7 +57,14 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
   });
   const [open, setOpen] = useState<OpenSession[] | null>(null);
   const [code, setCode] = useState('');
-  const [modules, setModules] = useState<Module[]>(['skill', 'feasibility', 'hybrid']);
+  const units = pickUnits();
+  const [mode, setMode] = useState<Mode>('random');
+  const [drawn, setDrawn] = useState<string[]>(() => draw(units));
+  const [picked, setPicked] = useState<string[]>([]);
+  const chosen = mode === 'random' ? drawn : mode === 'pick' ? picked : [];
+  const chosenIds = units.filter((u) => chosen.includes(u.key)).flatMap((u) => u.ids);
+  const sessionProblems = mode === 'all' ? problemsFor(ALL_MODULES) : problemsFor(ALL_MODULES, chosenIds);
+  const ready = mode === 'all' || chosen.length === SHORT_SESSION_SIZE;
   const [cohort, setCohort] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,7 +95,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const sess = await api.createSession(pass, c, modules, cohort);
+      const sess = await api.createSession(pass, c, ALL_MODULES, cohort, mode === 'all' ? [] : chosenIds);
       activate({ id: sess.id, chapter: sess.chapter_code });
     } catch (err) {
       setError(errText(err));
@@ -116,28 +131,63 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                   />
                   <Input label="Group label (optional)" value={cohort} maxLength={60} onChange={(e) => setCohort(e.target.value)} placeholder="Grade 7 · Tuesday" hint="Helps you find this workshop later. No student names." />
                   <fieldset className={s.modules}>
-                    <legend className="eyebrow">Modules</legend>
-                    {(Object.keys(MODULE_LABELS) as Module[]).map((m) => {
-                      const n = problemsFor([m]).length;
-                      return (
-                        <label key={m} className={s.moduleRow}>
-                          <input
-                            type="checkbox"
-                            checked={modules.includes(m)}
-                            onChange={(e) => setModules(e.target.checked ? [...modules, m] : modules.filter((x) => x !== m))}
-                          />
-                          <span>
-                            {MODULE_LABELS[m]} <span className={s.muted}>· {n} {n === 1 ? 'problem' : 'problems'} available</span>
-                          </span>
-                        </label>
-                      );
-                    })}
+                    <legend className="eyebrow">Questions</legend>
+                    {([
+                      ['random', 'Random 5', 'A quick check. We pick 5 problems for the whole group.'],
+                      ['pick', 'I’ll pick 5', 'Choose the 5 problems you want to teach around.'],
+                      ['all', 'Everything', 'Every problem. Long: plan for a full workshop.'],
+                    ] as [Mode, string, string][]).map(([m, label, hint]) => (
+                      <label key={m} className={s.moduleRow}>
+                        <input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} />
+                        <span>
+                          {label} <span className={s.muted}>· {hint}</span>
+                        </span>
+                      </label>
+                    ))}
+                    {mode === 'random' && (
+                      <div className={s.picks}>
+                        <ul className={s.pickList}>
+                          {units.filter((u) => drawn.includes(u.key)).map((u) => (
+                            <li key={u.key}>{u.title}</li>
+                          ))}
+                        </ul>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setDrawn(draw(units))}>
+                          <Shuffle size={16} strokeWidth={2.5} aria-hidden /> Shuffle
+                        </Button>
+                      </div>
+                    )}
+                    {mode === 'pick' && (
+                      <div className={s.picks}>
+                        <p className={`${s.muted} num`} aria-live="polite">
+                          {picked.length} of {SHORT_SESSION_SIZE} chosen
+                        </p>
+                        {ALL_MODULES.map((m) => (
+                          <div key={m}>
+                            <p className="eyebrow">{MODULE_LABELS[m]}</p>
+                            {units.filter((u) => u.module === m).map((u) => {
+                              const on = picked.includes(u.key);
+                              return (
+                                <label key={u.key} className={s.moduleRow}>
+                                  <input
+                                    type="checkbox"
+                                    checked={on}
+                                    disabled={!on && picked.length >= SHORT_SESSION_SIZE}
+                                    onChange={(e) => setPicked(e.target.checked ? [...picked, u.key] : picked.filter((k) => k !== u.key))}
+                                  />
+                                  <span>{u.title}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <p className={`${s.muted} num`}>
-                      About {estimateMinutes(problemsFor(modules))} minutes per student. Students can stop and resume with their code.
+                      About {estimateMinutes(sessionProblems)} minutes per student. Students can stop and resume with their code.
                     </p>
                   </fieldset>
                   {error && <FieldError>{error}</FieldError>}
-                  <Button type="submit" size="lg" block disabled={busy || code.length < 3 || modules.length === 0}>
+                  <Button type="submit" size="lg" block disabled={busy || code.length < 3 || !ready}>
                     {busy ? 'Starting…' : 'Start session'}
                   </Button>
                 </form>
