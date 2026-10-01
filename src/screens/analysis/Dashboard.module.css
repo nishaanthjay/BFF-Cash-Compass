@@ -75,7 +75,8 @@
 }
 .grid2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Two columns only when each chart keeps at least 620px; dense charts stay legible. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
   gap: var(--space-6);
   align-items: start;
 }
@@ -173,9 +174,6 @@
   font-size: var(--text-xs);
 }
 @media (max-width: 1000px) {
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

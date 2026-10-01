@@ -47,7 +47,7 @@ export function Scatter({ points, x, y, diagonal, refX, refY, showBelief, yLabel
         {yt.map((t) => (
           <g key={t}>
             <line x1={L} x2={w - R} y1={py(t)} y2={py(t)} stroke={chart.grid} />
-            <text className={s.tick} x={L - 6} y={py(t) + 4} textAnchor="end" fontSize={fontPx.xs}>
+            <text className={s.tick} x={L - 6} y={py(t) + (py(t) > H - B - 6 ? -3 : 4)} textAnchor="end" fontSize={fontPx.xs}>
               {formatAxis(t, y.unit)}
             </text>
           </g>

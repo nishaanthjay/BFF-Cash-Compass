@@ -28,7 +28,7 @@ function messageFor(e: unknown): string {
     case 'not_found':
       return 'No open session for that code. Check the screen at the front of the room.';
     case 'network':
-      return 'Can’t reach Money Check right now. Check the wifi and try again.';
+      return 'Can’t reach Cash Compass right now. Check the wifi and try again.';
     case 'rate_limited':
       return 'Too many tries from this device. Wait a minute and try again.';
     default:

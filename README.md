@@ -1,4 +1,4 @@
-# BFFA Money Check
+# Cash Compass
 
 A financial-literacy diagnostic for grades 6–8, run once at the start of a BFF of America chapter workshop. Students answer
 25 multi-step money problems (S11 is delivered as two items, S11A and S11B, so the bank has 26 files). The facilitator gets a live

@@ -12,8 +12,9 @@ export function Dumbbell({ pairs, showCodes }: { pairs: RatingPair[]; showCodes:
   const rows = sorted.slice(0, MAX_ROWS);
   const left = showCodes ? 70 : 12;
   const x = (v: number) => left + ((v - 1) / 4) * (w - left - 20);
-  const rh = 14;
-  const H = rows.length * rh + 30;
+  const rh = 18;
+  const T = 22;
+  const H = rows.length * rh + T + 30;
   const down = pairs.filter((p) => p.post < p.gut).length;
   const same = pairs.filter((p) => p.post === p.gut).length;
   return (
@@ -30,14 +31,17 @@ export function Dumbbell({ pairs, showCodes }: { pairs: RatingPair[]; showCodes:
         <svg className={s.svg} width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label={`${pairs.length} students: ${down} rated lower after the math, ${same} unchanged, ${pairs.length - down - same} higher.`}>
           {[1, 2, 3, 4, 5].map((v) => (
             <g key={v}>
-              <line x1={x(v)} x2={x(v)} y1={0} y2={H - 22} stroke={chart.grid} />
+              <line x1={x(v)} x2={x(v)} y1={T - 4} y2={H - 22} stroke={chart.grid} />
+              <text className={s.tick} x={x(v)} y={12} textAnchor="middle" fontSize={fontPx.xs}>
+                {v}
+              </text>
               <text className={s.tick} x={x(v)} y={H - 6} textAnchor="middle" fontSize={fontPx.xs}>
                 {v}
               </text>
             </g>
           ))}
           {rows.map((p, i) => {
-            const y = i * rh + 8;
+            const y = i * rh + T + 8;
             return (
               <g key={`${p.student}-${i}`}>
                 {showCodes && (
@@ -73,7 +77,7 @@ export function Calibration({ pairs, suppressBelow }: { pairs: RatingPair[]; sup
   ];
   const show = (n: number) => (n > 0 && n < suppressBelow ? '<5' : n || '');
   return (
-    <div>
+    <div className={s.calLayout}>
       <div className={s.calGrid} role="table" aria-label="Calibration grid: gut rating columns, after-the-math rating rows">
         {[5, 4, 3, 2, 1].map((p) => (
           <div key={p} role="row" style={{ display: 'contents' }}>
@@ -94,14 +98,18 @@ export function Calibration({ pairs, suppressBelow }: { pairs: RatingPair[]; sup
           </span>
         ))}
       </div>
-      <p className={s.note}>Columns = gut rating, rows = rating after the math. Outlined = no change. Gold = high confidence, still believes.</p>
-      <div className={s.quads}>
-        {quads.map((q) => (
-          <div key={q.label} className={[s.quad, q.hotCls && s.quadHot].filter(Boolean).join(' ')}>
-            <strong>{q.n > 0 && q.n < suppressBelow ? '<5' : q.n}</strong>
-            {q.label}
-          </div>
-        ))}
+      <div className={s.calSide}>
+        <p className={s.note} style={{ marginTop: 0 }}>
+          Columns = gut rating, rows = rating after the math. Outlined = no change. Gold = high confidence, still believes.
+        </p>
+        <div className={s.quads}>
+          {quads.map((q) => (
+            <div key={q.label} className={[s.quad, q.hotCls && s.quadHot].filter(Boolean).join(' ')}>
+              <strong>{q.n > 0 && q.n < suppressBelow ? '<5' : q.n}</strong>
+              {q.label}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

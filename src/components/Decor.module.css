@@ -21,7 +21,7 @@
   50% { transform: rotate(6deg) translateY(-6px); }
 }
 /* Hide floating shapes wherever they could overlap content. */
-@media (max-width: 960px) {
+@media (max-width: 960px), (max-height: 600px) {
   .layer {
     display: none;
   }

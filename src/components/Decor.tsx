@@ -69,8 +69,8 @@ type Placed = { el: ReactNode; style: CSSProperties };
 
 const LAYOUTS: Record<Variant, Placed[]> = {
   landing: [
-    { el: <Circle fill={color.secondary} size={120} />, style: { top: '8%', left: '4%' } },
-    { el: <Triangle fill={color.quaternary} size={90} />, style: { top: '58%', left: '7%' } },
+    { el: <Circle fill={color.secondary} size={120} />, style: { top: '26%', left: '4%' } },
+    { el: <Triangle fill={color.quaternary} size={90} />, style: { top: '60%', left: '8%' } },
     { el: <Dots fill={color.primary} size={150} />, style: { bottom: '6%', left: '14%' } },
     { el: <Squiggle stroke={color.primary} size={170} />, style: { top: '20%', right: '6%' } },
     { el: <Coin size={110} />, style: { top: '44%', right: '5%' } },

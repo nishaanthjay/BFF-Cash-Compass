@@ -113,7 +113,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
         ) : (
           <div className={s.stack}>
             <div>
-              <h1 className={s.h1}>Run a Money Check</h1>
+              <h1 className={s.h1}>Run a Cash Compass session</h1>
               <p className={s.sub}>Start a session for your chapter, then project the code and QR for students.</p>
             </div>
             <div className={s.grid2}>

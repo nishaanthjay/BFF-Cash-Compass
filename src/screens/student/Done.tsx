@@ -35,7 +35,7 @@ export function Done({ studentCode, onFinish }: Props) {
           ))}
         </div>
         <h1 className={s.title}>All done!</h1>
-        <p>Thanks for taking Money Check. Your facilitator will talk through these questions in the workshop.</p>
+        <p>Thanks for taking Cash Compass. Your facilitator will talk through these questions in the workshop.</p>
       </div>
 
       <Card tight className={s.status}>

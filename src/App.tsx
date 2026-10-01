@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { DemoBanner } from './components/DemoBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { Spinner } from './components/Spinner';
 import { IS_DEMO } from './api';
 import { Join } from './screens/student/Join';
 import { Run } from './screens/student/Run';
@@ -14,7 +15,7 @@ const ItemPage = lazy(() => import('./screens/analysis/ItemPage').then((m) => ({
 
 const guard = (el: ReactNode) => (
   <ErrorBoundary>
-    <Suspense fallback={null}>{el}</Suspense>
+    <Suspense fallback={<Spinner />}>{el}</Suspense>
   </ErrorBoundary>
 );
 

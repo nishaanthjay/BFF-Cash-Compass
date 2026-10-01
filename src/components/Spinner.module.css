@@ -1,0 +1,22 @@
+.wrap {
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+  /* Wait briefly so fast loads never flash a spinner. */
+  opacity: 0;
+  animation: show 0s 150ms forwards;
+}
+.ring {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  border: 5px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes show {
+  to { opacity: 1; }
+}
