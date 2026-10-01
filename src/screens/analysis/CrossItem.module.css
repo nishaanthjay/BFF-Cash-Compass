@@ -1,0 +1,153 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tab {
+  min-height: var(--layout-tap-min);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font: inherit;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+.tab[aria-pressed='true'] {
+  background: var(--color-tertiary);
+  box-shadow: var(--shadow-pop);
+}
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-color: var(--color-primary);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.rank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rankRow {
+  display: grid;
+  grid-template-columns: minmax(0, 17rem) minmax(0, 1fr) 4.5rem;
+  gap: var(--space-3);
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.rankLabel {
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.track {
+  height: 20px;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-muted);
+  overflow: hidden;
+}
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--chart-wrong);
+}
+.top .fill {
+  background: var(--color-tertiary);
+}
+.fillBlue {
+  background: var(--chart-correct);
+}
+.val {
+  text-align: right;
+  font-weight: var(--weight-bold);
+}
+.sub {
+  color: var(--color-muted-foreground);
+  font-size: var(--text-xs);
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+}
+.table th {
+  text-align: left;
+  font-weight: var(--weight-bold);
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.heat {
+  text-align: center;
+  font-weight: var(--weight-bold);
+  min-width: 3.5rem;
+  background: color-mix(in srgb, var(--chart-correct) calc(var(--p, 0) * 60%), var(--color-card));
+  color: var(--color-foreground);
+}
+.none {
+  text-align: center;
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+}
+.big {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-4xl);
+  line-height: 1;
+}
+.bigRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.pick {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.pick > * {
+  flex: 1 1 14rem;
+}
+.inline {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.warn {
+  font-weight: var(--weight-bold);
+}
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rankRow {
+    grid-template-columns: minmax(0, 1fr) 4rem;
+  }
+  .rankRow .track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

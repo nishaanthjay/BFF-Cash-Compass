@@ -1,27 +1,12 @@
 # BFFA Money Check
 
-> **Rebuild in progress: questionnaire v3, Stage 3 of 4.** The app is being rebuilt to the *Interaction and Admin Visual
-> Spec*. Done so far:
-> - multi-step problems, with no feedback and answers locked on confirm;
-> - inputs C1–C8 (number line, draw a curve, dial, stack cards, dot grid/jar, calendar, shade bar, timeline choice) plus rank cards;
-> - anonymous student codes;
-> - per-step instrumentation and auto strategy codes;
-> - the gap dashboard, with per-item charts for all 26 problems (S1–S15 with S11 split into S11A/S11B, F1–F8, H1–H2; wording is DRAFT);
-> - migrations `0003_questionnaire.sql` and `0004_split_problem_ids.sql`.
->
-> Some sections below still describe the earlier single-estimate version and get rewritten in Stage 4.
+A financial-literacy diagnostic for grades 6–8, run once at the start of a BFF of America chapter workshop. Students answer
+25 multi-step money problems (S11 is delivered as two items, S11A and S11B, so the bank has 26 files). The facilitator gets a live
+"where is the gap?" dashboard to decide what to teach first.
 
-A financial-literacy diagnostic for grades 6–8, run once at the start of BFF of America chapter workshops.
-Every question is a realistic money scenario, and the student types a **numeric estimate** (no multiple choice).
-The size and direction of the gap between the estimate and the true value
-(log error = `ln(estimate ÷ truth)`) shows where the misconceptions are.
-
-Vite + React + TypeScript, Supabase (free tier), Framer Motion, Lucide and hand-built SVG charts. The visual system is in [DESIGN.md](DESIGN.md).
-
-> **SAMPLE ITEMS ONLY.** The repo ships 3 clearly labelled sample questions so the whole app can be tested.
-> To add the real bank, see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md).
-
----
+> **Status: all four build stages are done.** Item wording is **DRAFT**, written from the *Interaction and Admin Visual
+> Spec*. It is marked "Draft wording" in the admin pages. Replace it with approved wording before using results for
+> anything beyond workshop teaching (see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md)).
 
 ## Quick start (demo mode, zero infrastructure)
 
@@ -30,118 +15,139 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-With no Supabase env vars set, the app runs against an **in-browser mock API** with seeded, clearly labelled
-**DEMO DATA**: 8 chapters and about 560 synthetic responses, with one chapter deliberately low-n.
-Everything works, including the analysis view.
+With no Supabase env vars, the app runs against an **in-browser mock API** with seeded, clearly labelled **DEMO DATA**
+(about 8 workshops of synthetic students, one live and one deliberately low-n). Everything works, including the admin dashboard.
 
 | Where | What |
 |---|---|
-| `/` | Student join (try chapter code from a session you start below) |
-| `/facilitator` | Passcode **`demo`** → start a session → project code + QR |
-| `/analysis` | Same passcode → aggregate charts, filters, CSV export |
-| `/preview/item`, `/preview/reveal` | Design-review routes for the two signature screens (demo mode only) |
+| `/` | Student join (chapter code, or `/?c=CODE` from the QR) |
+| `/facilitator` | Passcode **`demo`** → pick modules → start a session → project code + QR |
+| `/analysis` | Same passcode → Problems, Teach first, Students, Quality tabs; CSV export |
+| `/analysis/item/S6` | One problem's charts and "facilitator decision" |
 
-To demo the whole loop on one laptop, open `/facilitator` in one tab and start session `TX999`. Then open `/?c=TX999` in
-another tab: both tabs share the demo database in localStorage. "Reset demo data" on the analysis page restores the seed.
+To demo the whole loop on one laptop, start session `TX999` on `/facilitator`, then open `/?c=TX999` in another tab. Both tabs share
+the demo database in localStorage. "Reset demo data" restores the seed.
 
 ## How it works
 
-1. **Facilitator** enters the passcode and starts a session for a chapter code. Each chapter can have one open session at a time.
-   The screen shows the chapter code, a QR code (`https://<host>/?c=CODE`) and a live count of students started,
-   students finished and answers received, refreshed every 5 s. Reloading the page resumes the open session. Closing the
-   session stops all new answers.
-2. **Student** types the chapter code (or scans the QR), then answers every question one per screen using the
-   custom keypad (hardware keyboards and screen readers work too). After the last question, a **reveal** walks
-   through each item on a log-scale number line with a one-line explanation, then a done screen.
-3. **Analysis** (same passcode) shows aggregates only:
-   - stat tiles: responses, chapters, sessions and completion rate
-   - median log error per item and per DECA category
-   - error direction (under / over) per item
-   - responses per chapter, flagged as low-n below 10
-   - filters by chapter and date range, with n shown on every chart
-   - CSV export of the raw responses
+1. **Facilitator** starts a session for a chapter code and picks modules (Skill, Feasibility, Hybrid). The screen shows the code,
+   a QR code and live counts. Closing the session stops new answers.
+2. **Student** joins with the chapter code and gets a random **anonymous student code** to write down (it lets them resume
+   on another device). Then one question per screen. **Lock answer** is final: no back button, **no feedback of any kind**,
+   no timers, no points. A typed number box is always available beside any slider or tap input, and there are no default values.
+3. **Order** is seeded by the student code: random within modules, with rules such as S6 before H1, S11A/S11B at least 5 items apart
+   (order counterbalanced), and F1 kept away from S4/S5. S11 order and the S12 anchor (high/low/none) are balanced by a hash of the code.
+4. **Admin** has per-problem pages (beeswarm dots with the correct value as a solid line and predicted wrong answers as dashed
+   lines, plus problem-specific charts) and cross-item views:
+
+   | View | Where |
+   |---|---|
+   | D1 Teach-first ranking, D2 gap map (problem × skill family), D3 class radar (workshop vs pooled), D4 compounding panel ("linear on 3 or more problems"), D5 believable-but-wrong rate | Teach first tab |
+   | D6 student drilldown by anonymous code | Students tab |
+   | D7 instrument quality (difficulty, discrimination), unmatched-answer recode tool, typed vs dragged | Quality tab |
+   | D8 projector mode (checkbox in the scope card): no student codes, no recode tool, cells under 5 students hidden | everywhere |
+
+Every chart shows n and the date. Wrong-answer patterns are coded automatically (within ±1% of a predicted wrong value);
+answers that match nothing are `UNK` and can be recoded by hand. Manual codes override automatic ones everywhere.
+
+## Overrides of the earlier brief
+
+The Interaction and Admin Visual Spec replaced these earlier rules, so the app now does the opposite:
+- **In-app strategy coding** (earlier: no auto-tagging).
+- **Anonymous student-code drilldown** (earlier: no per-student pairing). Codes are random and tied to no name.
+- **Live workshop view**, polling every 10 s (earlier: no live dashboards).
+- **No reveal screen.** Students never see correct answers or feedback. Done says only "All answers saved".
+- Single-phase: no pre/post/delayed logic anywhere.
 
 ## Privacy
 
-- **No student identifiers of any kind**: no names, emails, schools, birthdates or student IDs.
-- A response stores only: session (and so the chapter code), item id/version, the numeric estimate, the true value at
-  answer time, and timestamps.
-- `attempt_id` is a random id for one run-through, used only to compute the completion rate. A new one is generated
-  every time, so it can't link a student across sessions.
-- The device token used for rate limiting is a random per-browser UUID. It's stored in a separate table and never
-  attached to responses.
-- The join screen shows a plain-language privacy notice.
+- **No student identifiers**: no names, emails, schools, birthdates or student IDs, and no IP address in our tables.
+- A row stores only: session (so the chapter code), anonymous student code, problem/step, answer, input method, timings, and timestamps.
+- Free-text answers show a "don't type names" hint, and emails and phone numbers are redacted in the browser before saving.
+- The device token (rate limiting) is a random per-browser UUID in a separate table, never attached to answers.
+- **Caveat:** Supabase and Vercel keep their own platform request logs, which can include IP addresses. That is outside our tables
+  and our control. Say so in any consent notice.
+
+## Honest limits (also shown on the charts)
+
+- Wording is DRAFT. Reference values were checked against the spec's scenario numbers; F6's $1,548 "realistic revenue" is not a multiple of
+  the $40 lawn price, so it is a labelled reference line, not a computed answer.
+- **S11** is hypothetical choices, so it shows present-bias patterns, not real behaviour.
+- **S12** needs the pooled view: per workshop there are too few students to detect a typical anchoring effect. The chart shows the
+  anchoring index, a bootstrap interval and the minimum detectable effect.
+- **F6/F7** depend on the scenario assumptions shown on the page.
+- **Timing and input-method comparisons are exploratory.** Students are not randomly assigned to typed vs dragged.
+- Some tolerance bands are tighter than ±1% (S5 step 3, S6 step 3a, S10 steps 3a/4) because the simple and compound answers are less than 1% apart.
+- S2 and S10 axes were widened from the spec so the answer isn't at the centre of the line.
+- With every module selected, a session is well over 12 minutes. Pick modules per workshop.
+- The Supabase client has been tested only against local SQL and the mock, not a live Supabase project.
 
 ## Offline tolerance
 
-Answers are written to localStorage **before** any network call, then synced in idempotent batches with exponential
-backoff, retrying on reconnect, on tab focus and every 20 s. Both the run itself and the queue survive reloads. The done screen
-shows "All answers saved" or "Waiting for wifi". Every font weight is fetched at startup, and the staff pages are split into
-their own chunks so students download less.
-
-The server only accepts answers for an **open** session. Answers still queued when the facilitator closes the session are refused,
-and the done screen tells the student to let the facilitator know. **Leave sessions open a few minutes after the last student finishes.**
+Answers are written to localStorage **before** any network call, then synced in idempotent batches with backoff, on reconnect,
+on tab focus and every 20 s. Rate limits: 60 answers per minute and 3 student codes per device per session. The server accepts
+answers only for an **open** session, so leave sessions open a few minutes after the last student finishes.
 
 ## Real deployment
 
 ### 1. Supabase
 1. Create a free project.
-2. Open the SQL editor and run `supabase/migrations/0001_init.sql`, then `0002_single_phase.sql`.
-   With the Supabase CLI, run `supabase db push` instead.
+2. Run the migrations in `supabase/migrations/` in order (`0001` … `0004`), in the SQL editor or with `supabase db push`.
 3. **Set the facilitator passcode** (the migration installs a placeholder):
    ```sql
    update public.app_config set passcode_hash = crypt('your-long-passcode', gen_salt('bf', 10));
    ```
-4. Copy the **Project URL** and the **anon public key** (Settings → API).
+4. Copy the **Project URL** and **anon public key** (Settings → API).
 
-Security model: RLS is on for every table with **no policies**, and every table privilege is revoked from `anon`. The browser can
-only call these SECURITY DEFINER functions:
-- `join_session` and `sync_answers`: open sessions only, rate-limited to 30 answers/min and 3 attempts per session per device.
-- `fac_*` and `export_data`: these require the passcode.
-- `heartbeat`.
-
-`supabase/tests/smoke.sql` exercises all of this as the `anon` role. It passes against Postgres 16.
+Security model: RLS on every table with **no policies**, all table privileges revoked from `anon`. The browser can only call
+SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (open sessions, rate-limited), the passcode-gated
+`fac_*` functions and `export_data`, and `heartbeat`. `supabase/tests/smoke.sql` exercises all of it as the `anon` role
+(run it after the migrations on a database that has `anon` and `authenticated` roles; it passes on Postgres 16).
 
 ### 2. Vercel
-1. Import the repo. The framework is Vite; build with `npm run build` and output to `dist`.
-2. Set the environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [.env.example](.env.example)).
-3. Deploy. `vercel.json` rewrites every path to `index.html` so deep links like `/?c=TX014` and `/analysis` work.
+Import the repo (Vite, `npm run build`, output `dist`). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+(see [.env.example](.env.example)). `vercel.json` rewrites all paths to `index.html`.
 
-### 3. GitHub Actions (keep-alive + backups)
-Add these repo secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `MC_PASSCODE`.
-- `heartbeat.yml`: calls `heartbeat()` once a day so the free tier never pauses (it also prunes old rate-limit rows).
-- `backup.yml`: every Monday it exports every response to CSV + JSON and uploads them as a workflow artifact (kept 90 days).
-- `ci.yml`: runs tests, the contrast check and the build on every push.
+### 3. GitHub Actions
+Add secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MC_PASSCODE`.
+- `heartbeat.yml`: daily `heartbeat()` so the free tier never pauses.
+- `backup.yml`: every Monday, exports every response to CSV + JSON as a workflow artifact (90 days).
+- `ci.yml`: tests, contrast check and build on every push.
+
+## Data export (CSV v2)
+
+One row per locked step. Columns include `student_code`, `workshop_id`, `chapter_code`, `item_id`, `step_id`, `form_version`,
+`raw_value`, `input_method`, `strategy_code` (after manual recodes) and `auto_strategy_code`, `manually_coded`, `correct_value`,
+computed `signed_error`, `ape` and `log_ratio`, ratings, free text, `time_to_first_touch_ms`, `time_to_lock_ms`, `n_revisions`,
+`device_type`, `item_position`, `value_json` and `answered_at`. Text starting with `=`, `+`, `-` or `@` is escaped against spreadsheet formulas.
 
 ## Development
 
 ```bash
-npm test            # vitest: log error/median, queue sync, rate limit, item truth fns + validator, CSV, analysis, mock API, token scan, contrast
+npm test            # vitest (items, classifier, order engine, inputs, charts, analysis, CSV, mock API, token scan, contrast)
 npm run contrast    # WCAG table (fails below AA)
 npm run build       # typecheck + production build
-node scripts/e2e.mjs http://localhost:5173 screenshots   # Playwright walk-through in demo mode (375 px, offline, reduced motion)
+node scripts/e2e.mjs http://localhost:5173 screenshots   # Playwright walk-through (375 px, offline, reduced motion)
 ```
 
-Structure:
 ```
 src/styles/tokens.ts     the only file with hex colours / font sizes (enforced by tests/tokens.test.ts)
-src/components/          shared components (Button, Card, Input, NumberDisplay, Keypad, ProgressCoins, StatTile, ChartCard, …)
-src/items/               item types, validator, samples/, bank/ (drop real items here)
-src/lib/                 pure logic: logError, analysis, queue, rateLimit, csv, entry, verdict, logScale
+src/components/          shared components
+src/items/               types, validator, finance helpers, bank/ (one file per problem)
+src/inputs/              student inputs (number line, curve, dial, stack, dot grid/jar, calendar, shade bar, timeline, rank)
+src/lib/                 pure logic: classify, order, forms, analysis, crossItem, queue, rateLimit, csv, telemetry
+src/charts/              hand-built SVG charts for the admin pages
 src/api/                 ApiClient interface, Supabase client, in-browser mock + DEMO seed
-src/screens/             student (Join, Run, Item, Reveal, Done), facilitator, analysis
+src/screens/             student, facilitator, analysis
 supabase/                migrations + SQL smoke test
 ```
 
 ## Accessibility
 
-- Every text/background pair is checked numerically (`npm run contrast`, which also runs in tests).
-- Focus states are a thick blue border plus a hard shadow.
-- Semantic HTML, a label on every input, and a keypad of real buttons, so it is keyboard-operable.
-- Meaning is never carried by colour alone: verdicts and errors pair an icon with text, and the charts have legends,
-  direct labels and a table view.
-- `prefers-reduced-motion` disables spring, wiggle, count-up and the reveal animation. The e2e script verifies this.
-- The layout was tested at a 375 px viewport with no horizontal scroll.
+- Every text/background pair is checked numerically (`npm run contrast`, also run in tests).
+- Thick blue focus border plus hard shadow; semantic HTML; a label on every input; keyboard-operable inputs and typed alternatives.
+- Meaning is never carried by colour alone: charts use shapes, direct labels and legends, and tables where useful.
+- `prefers-reduced-motion` disables spring, wiggle and count-up. Tested at a 375 px viewport with no horizontal scroll.
 
 <details><summary>Contrast results</summary>
 
@@ -176,24 +182,13 @@ supabase/                migrations + SQL smoke test
 
 ## Decisions and assumptions
 
-- **Single-phase diagnostic.** It is taken once at the start of a workshop. There are no session types (PRE/POST/DELAYED), no
-  parallel forms A/B and no pre-vs-post comparison. Because the "no answers during PRE" rule went away, every student sees the reveal
-  after their last question.
-- **Migrations.** `0001_init.sql` was written after the single-phase decision, so it never had `session_type` or `form`, and no earlier
-  migration ever existed in this repo. `0002_single_phase.sql` drops those columns, types and old function signatures with
-  `IF EXISTS`, so it does nothing on a fresh database and cleans up any database built from an earlier draft.
-- **Join model.** Students join by chapter code alone, which is why each chapter can have only one open session.
-- **Truth snapshot.** Each response stores the true value at answer time, so later item edits don't silently change past results.
-- **Zero guesses.** Estimates of 0 have no log error. They are excluded from medians (with the count shown), and they count as "under"
-  in the direction table.
-- **"Spot on"** on the student reveal means within 10%. "Exact" in analysis means within 1%.
-- **Chart colours.** Error direction is a diverging encoding (under = pink `#DB2777`, exact = gray, over = Ledger Blue), validated with a
-  colour-vision-deficiency palette check. The gold highlight is reserved for the headline ("biggest miss"), since there is no
-  pre/post delta any more.
-- **Brand colours.** `#0077B5` and `#FECE66` come from DESIGN.md. They could **not** be checked against bffamerica.org from the
-  build environment (network egress blocked), so please verify them.
-- **Logo.** The BFF logo is a placeholder text wordmark (`src/components/Wordmark.tsx`). Swap in the official asset there.
-- **Passcode.** One shared passcode, kept in sessionStorage. Wrong guesses are slowed server-side (0.5 s each).
-- **Icon rule exceptions.** DESIGN.md says icons always sit in a coloured circle. The exceptions are the keypad's backspace glyph and
-  the small warning glyph inside the "Low n" chip.
-- **Hex outside the tokens file.** `index.html` (theme-color) and `public/favicon.svg` contain hex, but both are outside `src/`.
+- **Single-phase.** Taken once; no PRE/POST/DELAYED.
+- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B.
+- **Join model.** Chapter code alone; one open session per chapter.
+- **Truth snapshot.** Each answer stores its correct value at answer time, so later item edits don't rewrite past results.
+- **Chart colours.** Correct = Ledger Blue, named wrong pattern = pink `#DB2777`, unclassified = gray, validated with a colour-vision check; shapes and labels carry meaning too. Gold marks the headline finding.
+- **Brand colours.** `#0077B5` and `#FECE66` come from DESIGN.md and could **not** be checked against bffamerica.org (network blocked). Please verify.
+- **Logo.** Placeholder text wordmark in `src/components/Wordmark.tsx`; swap in the official asset.
+- **Tap-based stack/rank.** Stack and rank inputs use tap-to-add plus arrows and drag-to-reorder, not drag-from-pool, which is unreliable on touch.
+- **Passcode.** One shared passcode in sessionStorage; wrong guesses are slowed server-side.
+- **Hex outside tokens.** `index.html` (theme-color) and `public/favicon.svg` contain hex, outside `src/`.
