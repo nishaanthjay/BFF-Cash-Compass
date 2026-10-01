@@ -41,8 +41,12 @@ export type InputSpec =
   | ({ type: 'numberLine' } & AxisSpec) // C1
   | ({ type: 'jar' } & AxisSpec) // C5 (fill line on a jar)
   | { type: 'curve'; xMax: number; yMax: number; start: number; midX: number; unit: Unit } // C2
+  | { type: 'dotGrid'; total: number; columns: number; itemWord: string } // C5 dot grid (tap to fill)
+  | { type: 'calendar'; mode: 'single' | 'multi' | 'count'; cells: number; columns: number; cellWord: string; group?: { size: number; word: string }; maxPerCell?: number; countWord?: string; unitPrice?: number; unit: Unit } // C6
+  | { type: 'timeline'; options: { id: string; label: string; amount: string; weeks: number }[]; maxWeeks: number } // C8
+  | { type: 'rank'; cards: { id: string; label: string }[]; topLabel: string; bottomLabel: string }
   | { type: 'stack'; cards: StackCard[]; poolLabel: string; areaLabel: string } // C4
-  | { type: 'dial' } // C3 believability 1–5
+  | { type: 'dial'; low?: string; high?: string } // C3 believability 1–5 (custom end labels allowed)
   | { type: 'shade'; whole: number; unit: Unit; readout: 'usd' | 'pct'; typed?: 'linked' | 'separate' } // C7
   | { type: 'choice'; options: { id: string; label: string }[]; multi?: boolean; other?: boolean }
   | { type: 'text'; placeholder?: string };
@@ -54,7 +58,7 @@ export type Scenario =
   | { layout: 'jars'; text: string; labels: string[]; fromSteps: (string | null)[] }
   | { layout: 'priceTag'; item: string; price: number; badges: string[] }
   | { layout: 'receipt'; title: string; lines: { label: string; value?: number; fromStep?: string }[] }
-  | { layout: 'claim'; who: string; source: 'post' | 'chat' | 'message' | 'speech'; claim: string; facts?: { label: string; value: string }[] };
+  | { layout: 'claim'; who: string; source: 'post' | 'chat' | 'message' | 'speech' | 'ad'; claim: string; facts?: { label: string; value: string }[] };
 
 // ───────────── problem & steps ─────────────
 
@@ -78,7 +82,12 @@ export interface Step {
   /** Correct option id(s) for choice steps. */
   correctChoice?: string[];
   calculator?: boolean;
+  /** Integer-valued or scenario-assumption steps: never auto-code an unmatched answer as UNK. */
+  noUnk?: boolean;
   optional?: boolean;
+  /** Show this step only to students assigned one of these forms (e.g. the anchor question in S12). */
+  forms?: string[];
+  promptByForm?: Record<string, string>;
   /** Short facilitator label for charts, e.g. "Step 1 · cold estimate". */
   label: string;
 }
@@ -101,6 +110,18 @@ export type ChartSpec =
   | { type: 'choiceSplit'; step: string; title: string; by: { step: string; ref: number; withinPct: number; yes: string; no: string } }
   | { type: 'cardHeat'; step: string; title: string }
   | { type: 'waterfall'; stack: string; profit: string; title: string; cards: { id: string; label: string; amount: number; sign: 1 | -1 }[]; correct: number }
+  | { type: 'sankey'; title: string; columns: { step: string; label: string; groups: { label: string; codes?: Code[]; choice?: string; tone?: 'corr' | 'wrong' | 'unk' }[] }[] }
+  | { type: 'pairTiles'; title: string; note: string; a: { item: string; step: string; early: string; late: string; word: string }; b: { item: string; step: string; early: string; late: string; word: string } }
+  | { type: 'correctSplit'; title: string; step: string; group: { a: { item: string; step: string; pick: string }; b: { item: string; step: string; pick: string }; yes: string; no: string } }
+  | { type: 'ridgeline'; title: string; step: string; anchors: Record<string, number>; labels: Record<string, string>; unit: Unit; axis: AxisSpec }
+  | { type: 'logRatio'; title: string; step: string; truth: number; marks?: { value: number; label: string }[]; unit: Unit }
+  | { type: 'confError'; title: string; gut: string; step: string; truth: number }
+  | { type: 'slope'; title: string; first: string; second: string; order: string[]; labels: Record<string, string> }
+  | { type: 'rankCorr'; title: string; first: string; second: string; order: string[] }
+  | { type: 'firstLast'; title: string; step: string; labels: Record<string, string> }
+  | { type: 'calendarHeat'; title: string; step: string; cells: number; columns: number; cellWord: string; maxPerCell?: number }
+  | { type: 'valueBuckets'; title: string; step: string; note?: string; buckets: { label: string; min: number; max: number; tone: 'corr' | 'wrong' | 'unk' | 'neutral' }[] }
+  | { type: 'twoByTwo'; title: string; note: string; x: { step: string; label: string }; y: { step: string; label: string } }
   | { type: 'quadrants'; title: string; x: { step: string; ref: number; withinPct: number; good: string; bad: string }; belief: { step: string; min: number; yes: string; no: string } }
   | { type: 'codeBar'; steps: string[]; title: string }
   | { type: 'funnel'; steps: string[]; title: string }
@@ -116,6 +137,8 @@ export interface OrderRule {
   before?: string[];
   /** Never directly next to these problems. */
   notAdjacent?: string[];
+  /** At least `gap` other problems between this one and `with` (e.g. S11 parts A and B). */
+  minGap?: { with: string; gap: number };
 }
 
 export interface Problem {
@@ -132,6 +155,13 @@ export interface Problem {
   scenario: Scenario;
   steps: Step[];
   order?: OrderRule;
+  /**
+   * Counterbalanced form. Problems sharing a `key` share one assignment per student
+   * (e.g. S11A and S11B both read forms.S11). Assigned from a hash of the student code.
+   */
+  form?: { key: string; options: string[] };
+  /** For counterbalanced order: form option -> problem ids in the order they must appear. */
+  orderByForm?: Record<string, string[]>;
   /** Admin charts, in display order. The first `primary` dots chart is the headline. */
   admin: ChartSpec[];
   /** What the facilitator should take from the charts. */

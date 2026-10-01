@@ -1,8 +1,10 @@
-import { ALL_PROBLEMS, correctOf, problemsFor } from '../items';
+import { ALL_PROBLEMS, correctOf, formKeyOf, problemsFor, stepsFor } from '../items';
 import type { Module, Prior, Problem, Step } from '../items/types';
 import type { Code } from '../items/families';
 import { classify } from '../lib/classify';
+import { assignForms, orderPairs } from '../lib/forms';
 import { buildOrder } from '../lib/order';
+import { rankShown } from '../lib/rank';
 import { hashString, mulberry32 } from '../lib/rng';
 import { newStudentCode } from '../lib/studentCode';
 import type { InputMethod, DeviceType } from '../lib/telemetry';
@@ -60,8 +62,11 @@ function hex(r: () => number, n: number) {
 }
 const fakeUuid = (r: () => number) => `${hex(r, 8)}-${hex(r, 4)}-4${hex(r, 3)}-a${hex(r, 3)}-${hex(r, 12)}`;
 
+/** Plausible values for steps that have no "correct" answer (demo data only). */
+const TYPICAL: Record<string, number> = { 'F5.s5b': 12, 'F6.s4': 250, 'S11A.s2': 34, 'S12.s2': 45, 'S12.s3': 38 };
+
 /** Simulate one numeric answer: correct, one of the predicted misconceptions, or noise. */
-function simulateNumber(r: () => number, step: Step, prior: Prior, skill: number, difficulty: number): number {
+function simulateNumber(r: () => number, step: Step, prior: Prior, skill: number, difficulty: number, typical?: number): number {
   const truth = correctOf(step, prior);
   const codes = step.codes ?? [];
   const base = (step.kind === 'control' ? 1.2 : step.kind === 'guided' ? 0.4 : -0.4) - difficulty;
@@ -72,7 +77,7 @@ function simulateNumber(r: () => number, step: Step, prior: Prior, skill: number
     const c = pickWeighted(r, codes.map((c, i) => [c, i === 0 ? 3 : 1] as [typeof c, number]));
     return Number(c.value.toFixed(2));
   }
-  const center = truth ?? codes[0]?.value ?? 10;
+  const center = truth ?? typical ?? codes[0]?.value ?? 10;
   return Number(Math.max(0, center * Math.exp(normal(r) * 0.45)).toPrecision(3));
 }
 
@@ -94,7 +99,6 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
     };
     out.sessions.push(session);
     const set = problemsFor(w.modules).filter((p) => problems.includes(p));
-    const expected = set.reduce((a, p) => a + p.steps.length, 0);
 
     for (let k = 0; k < w.n; k++) {
       const code = newStudentCode(r);
@@ -105,15 +109,19 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
       const straightLiner = k === 5 && w.n > 10;
       const started = created + (2 + r() * 5) * 60_000;
       // Open (live) workshop: students are part-way through.
+      const forms = assignForms(set, code);
+      const expected = set.reduce((a, p) => a + stepsFor(p, forms).length, 0);
+      const presentBiased = r() < 0.22;
       const leaveAt = w.open ? Math.floor(expected * (0.3 + r() * 0.9)) : r() < 0.07 ? Math.floor(expected * r()) : expected;
-      const order = buildOrder(set, code).ids;
+      const order = buildOrder(set, code, orderPairs(set, forms)).ids;
       let t = started;
       let answered = 0;
       for (const [pos, pid] of order.entries()) {
         const p = set.find((x) => x.id === pid)!;
         const prior: Prior = {};
         const gut = Math.min(5, Math.max(1, Math.round(3.6 + normal(r) * 0.9 - (p.module === 'feasibility' ? 0 : 0.5))));
-        for (const step of p.steps) {
+        const form = forms[formKeyOf(p)];
+        for (const step of stepsFor(p, forms)) {
           if (answered >= leaveAt) break;
           let raw: number | null = null;
           let choice: string[] | undefined;
@@ -126,7 +134,8 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
           if (i.type === 'dial') raw = straightLiner ? 5 : step.kind === 'rating_post' ? Math.min(5, Math.max(1, Math.round(gut - Math.max(0, 0.8 + skill * 0.9 + normal(r) * 0.6)))) : gut;
           else if (i.type === 'choice') {
             const ids = i.options.map((o) => o.id);
-            if (i.multi) {
+            if (p.id === 'S12' && step.id === 's1') choice = [r() < (form === 'H' ? 0.3 : 0.8) ? 'more' : 'less'];
+            else if (i.multi) {
               choice = ids.filter(() => r() < 0.45);
               if (!choice.length) choice = [ids[Math.floor(r() * ids.length)]];
             } else if (step.correctChoice && r() < 1 / (1 + Math.exp(-(0.2 + 1.1 * skill - difficulty)))) choice = [...step.correctChoice];
@@ -141,13 +150,52 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
             if (!chosen.length) chosen.push(real[0].id);
             for (let k = chosen.length - 1; k > 0; k--) if (r() < 0.2) [chosen[k], chosen[k - 1]] = [chosen[k - 1], chosen[k]], (moved = true);
             choice = chosen;
+          } else if (i.type === 'dotGrid') {
+            const illusion = (step.codes ?? []).find((c) => c.code === 'ILLUSION');
+            const truth = correctOf(step, prior) ?? 0;
+            raw = illusion && r() < 0.42 - 0.12 * skill ? illusion.value : Math.max(0, Math.min(i.total, Math.round((illusion ? Math.floor(truth) : truth) + normal(r) * (illusion ? 1.1 : 2.6 - 0.8 * skill))));
+          } else if (i.type === 'calendar') {
+            if (i.mode === 'single') {
+              raw = Math.max(1, Math.min(i.cells, Math.round(simulateNumber(r, step, prior, skill, difficulty))));
+              extra = { cells: [raw] };
+            } else if (i.mode === 'multi') {
+              const chosen: number[] = [];
+              for (let c = 1; c <= i.cells; c++) if (r() < (c === 1 ? 0.25 : 0.82 + 0.1 * skill)) chosen.push(c);
+              if (!chosen.length) chosen.push(2);
+              raw = chosen.length;
+              extra = { cells: chosen };
+            } else {
+              const counts: Record<string, number> = {};
+              if (r() < 0.12) for (let c = 1; c <= i.cells; c++) counts[c] = 5;
+              else {
+                const days = 7 + Math.floor(r() * 8);
+                for (let k = 0; k < days; k++) counts[1 + Math.floor(r() * i.cells)] = 2 + Math.floor(r() * 4);
+              }
+              const lawns = Object.values(counts).reduce((a, b) => a + b, 0);
+              raw = lawns * (i.unitPrice ?? 1);
+              extra = { counts, lawns };
+            }
+          } else if (i.type === 'timeline') {
+            choice = [p.id === 'S11A' ? (presentBiased || r() < 0.4 ? 'soon' : 'later') : presentBiased || r() < 0.78 ? 'later' : 'soon'];
+          } else if (i.type === 'rank') {
+            const truthOrder = i.cards.map((c) => c.id);
+            const order2 = [...truthOrder];
+            const swapP = step.id === 's1' ? 0.4 - 0.1 * skill : 0.12;
+            for (let pass = 0; pass < 2; pass++) for (let k = 0; k < order2.length - 1; k++) if (r() < swapP) [order2[k], order2[k + 1]] = [order2[k + 1], order2[k]];
+            choice = order2;
+            extra = { shown: rankShown(step, code), moves: Math.floor(r() * 5) };
+            moved = r() < 0.5;
           } else if (i.type === 'text') {
             if (r() < 0.8) {
               if (step.id === 'why') [text, tag] = SURVIVOR_TEXT[Math.min(SURVIVOR_TEXT.length - 1, Math.floor(r() * 3 + (skill < 0 ? 3 : 0) * r()))];
               else text = GENERIC_TEXT[Math.floor(r() * GENERIC_TEXT.length)];
             }
+          } else if (p.id === 'S12' && (step.id === 's2' || step.id === 's3')) {
+            const base = Math.exp(normal(r) * 0.35) * 45;
+            const pulled = form === 'H' ? base + 0.28 * (80 - base) : form === 'L' ? base + 0.28 * (25 - base) : base;
+            raw = Math.max(1, Math.round(step.id === 's2' ? pulled : pulled * 0.85));
           } else {
-            raw = simulateNumber(r, step, prior, skill, difficulty);
+            raw = simulateNumber(r, step, prior, skill, difficulty, TYPICAL[`${p.id}.${step.id}`]);
             if (i.type === 'curve' && raw !== null) {
               const lin = (step.codes ?? []).some((c) => c.code === 'LIN' && Math.abs(raw! - c.value) <= c.value * 0.02);
               const mid = lin ? (i.start + raw) / 2 : Math.sqrt(i.start * Math.max(1, raw));
@@ -156,9 +204,9 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
             }
           }
           const lockMs = speeder ? 1500 + r() * 1500 : (step.kind === 'cold' ? 9000 : 14000) + r() * 30000;
-          const visual = i.type === 'numberLine' || i.type === 'jar' || i.type === 'curve' || i.type === 'shade';
+          const visual = i.type === 'numberLine' || i.type === 'jar' || i.type === 'curve' || i.type === 'shade' || i.type === 'dotGrid' || i.type === 'calendar';
           const method: InputMethod | null =
-            i.type === 'number' || i.type === 'text' ? 'typed' : i.type === 'dial' || i.type === 'choice' ? 'tapped' : i.type === 'stack' ? (moved ? 'dragged' : 'tapped') : visual ? (r() < 0.6 ? pref : pickWeighted(r, [['typed', 1], ['dragged', 1], ['tapped', 1]])) : 'typed';
+            i.type === 'number' || i.type === 'text' ? 'typed' : i.type === 'dial' || i.type === 'choice' ? 'tapped' : i.type === 'stack' || i.type === 'rank' ? (moved ? 'dragged' : 'tapped') : i.type === 'timeline' ? 'tapped' : visual ? (r() < 0.6 ? pref : pickWeighted(r, [['typed', 1], ['dragged', 1], ['tapped', 1]])) : 'typed';
           t += lockMs + 1500;
           if (i.type === 'shade' && raw !== null) extra = { fraction: Math.min(1, Math.round((i.typed === 'separate' ? (r() < 0.8 ? raw / i.whole : r()) : raw / i.whole) * 100) / 100) };
           const answer: AnswerRow = {
@@ -168,7 +216,7 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
             item_id: p.id,
             item_version: p.version,
             step_id: step.id,
-            form_version: null,
+            form_version: form ?? null,
             raw_value: raw,
             value: choice || extra ? { ...(choice ? { choice } : {}), ...(extra ?? {}) } : null,
             input_method: method,
@@ -191,7 +239,7 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
       out.students.push({
         student_code: code,
         session_id: session.id,
-        forms: {},
+        forms,
         device_type: device,
         expected_steps: expected,
         started_at: new Date(started).toISOString(),

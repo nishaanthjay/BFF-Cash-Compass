@@ -7,13 +7,16 @@ import { hashString, seeded } from './rng';
  * each problem (`order.before`, `order.notAdjacent`) by randomized topological
  * sort + rejection. Returns problem ids; item_position = index + 1.
  */
-export function buildOrder(problems: Problem[], seedKey: string, maxTries = 5000): { ids: string[]; relaxed: boolean } {
+export function buildOrder(problems: Problem[], seedKey: string, extraBefore: [string, string][] = [], maxTries = 5000): { ids: string[]; relaxed: boolean } {
   const ids = problems.map((p) => p.id);
   const present = new Set(ids);
   const before = new Map<string, Set<string>>(); // a -> must precede these
   const adj = new Map<string, Set<string>>();
+  const gaps: { a: string; b: string; gap: number }[] = [];
+  for (const [a, b] of extraBefore) if (present.has(a) && present.has(b)) (before.get(a) ?? before.set(a, new Set()).get(a)!).add(b);
   for (const p of problems) {
     for (const b of p.order?.before ?? []) if (present.has(b)) (before.get(p.id) ?? before.set(p.id, new Set()).get(p.id)!).add(b);
+    if (p.order?.minGap && present.has(p.order.minGap.with)) gaps.push({ a: p.id, b: p.order.minGap.with, gap: p.order.minGap.gap });
     for (const b of p.order?.notAdjacent ?? [])
       if (present.has(b)) {
         (adj.get(p.id) ?? adj.set(p.id, new Set()).get(p.id)!).add(b);
@@ -43,7 +46,8 @@ export function buildOrder(problems: Problem[], seedKey: string, maxTries = 5000
     return out.length === ids.length ? out : ids; // cycle guard (validator forbids cycles)
   };
 
-  const valid = (seq: string[]) => seq.every((id, i) => i === 0 || !adj.get(seq[i - 1])?.has(id));
+  const valid = (seq: string[]) =>
+    seq.every((id, i) => i === 0 || !adj.get(seq[i - 1])?.has(id)) && gaps.every((g) => Math.abs(seq.indexOf(g.a) - seq.indexOf(g.b)) > g.gap);
   for (let t = 0; t < maxTries; t++) {
     const seq = topo();
     if (valid(seq)) return { ids: seq, relaxed: false };

@@ -123,6 +123,6 @@ describe('order engine on the real bank', () => {
     }
   });
   it('also works for a single module', () => {
-    expect(buildOrder(problemsFor(['hybrid']), 'x').ids).toEqual(['H1']);
+    expect(buildOrder(problemsFor(['hybrid']), 'x').ids.sort()).toEqual(['H1', 'H2']);
   });
 });

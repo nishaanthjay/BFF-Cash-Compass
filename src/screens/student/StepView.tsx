@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ProgressCoins } from '../../components/ProgressCoins';
+import { rankShown } from '../../lib/rank';
 import { isAnswered, StepInput } from '../../inputs/StepInput';
+import { promptFor } from '../../items';
 import { EMPTY_VALUE, type StepValue } from '../../inputs/types';
 import type { Problem, Step } from '../../items/types';
 import { useStepTelemetry } from '../../lib/useStepTelemetry';
@@ -16,6 +18,11 @@ export type LockedTelemetry = ReturnType<ReturnType<typeof useStepTelemetry>['fi
 type Props = {
   problem: Problem;
   step: Step;
+  /** The steps this student sees (form-specific steps filtered). */
+  steps: Step[];
+  form?: string;
+  /** Student code, used for the deterministic shuffle of ranking cards. */
+  seed: string;
   problemIndex: number;
   problemCount: number;
   done: number;
@@ -25,17 +32,20 @@ type Props = {
 };
 
 /** One step per screen. Lock = final; there is no back button and no feedback. */
-export function StepView({ problem, step, problemIndex, problemCount, done, total, own, onLock }: Props) {
+export function StepView({ problem, step: rawStep, steps, form, seed, problemIndex, problemCount, done, total, own, onLock }: Props) {
+  const step: Step = { ...rawStep, prompt: promptFor(rawStep, form) };
   const key = `${problem.id}.${step.id}`;
   const [state, setState] = useState<{ key: string; v: StepValue }>({ key, v: EMPTY_VALUE });
   const value = state.key === key ? state.v : EMPTY_VALUE;
   const tel = useStepTelemetry(key);
-  const stepNo = problem.steps.indexOf(step) + 1;
+  const stepNo = steps.findIndex((x) => x.id === step.id) + 1;
   const ready = isAnswered(step, value);
 
   const lock = () => {
     if (!ready) return;
-    onLock(value, tel.finish());
+    // An untouched ranking is still an answer: record the shuffled order the student saw.
+    const v = step.input.type === 'rank' && !value.choice ? { raw: null, choice: rankShown(step, seed), extra: { shown: rankShown(step, seed), moves: 0 } } : value;
+    onLock(v, tel.finish());
   };
 
   return (
@@ -56,7 +66,7 @@ export function StepView({ problem, step, problemIndex, problemCount, done, tota
                 Problem {problemIndex + 1} of {problemCount}
               </span>
               <span className="num">
-                Part {stepNo} of {problem.steps.length}
+                Part {stepNo} of {steps.length}
               </span>
             </div>
             <h1 className={s.title}>{problem.title}</h1>
@@ -74,6 +84,7 @@ export function StepView({ problem, step, problemIndex, problemCount, done, tota
               {step.prompt}
             </p>
             <StepInput
+              seed={seed}
               step={step}
               value={value}
               onEnter={lock}

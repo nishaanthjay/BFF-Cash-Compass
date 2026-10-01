@@ -28,7 +28,7 @@ export function classify(step: Step, raw: number | null, prior: Prior = {}, choi
   if (truth !== null && within(raw, truth, step.correctTolPct)) codes.push('CORR');
   for (const c of step.codes ?? []) if (within(raw, c.value, c.tolPct)) codes.push(c.code);
   if (truth === null && !step.codes?.length) return codes;
-  return codes.length ? codes : ['UNK'];
+  return codes.length ? codes : step.noUnk ? [] : ['UNK'];
 }
 
 /** Signed error, absolute percentage error and log ratio, as in the data model. */

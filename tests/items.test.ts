@@ -14,8 +14,8 @@ describe('item bank', () => {
     expect(ALL_PROBLEMS.every((p) => p.draft)).toBe(true);
   });
   it('modules filter', () => {
-    expect(problemsFor(['feasibility']).map((p) => p.id)).toEqual(['F1', 'F2', 'F5']);
-    expect(problemsFor(['hybrid']).map((p) => p.id)).toEqual(['H1']);
+    expect(problemsFor(['feasibility']).map((p) => p.id)).toEqual(['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8']);
+    expect(problemsFor(['hybrid']).map((p) => p.id)).toEqual(['H1', 'H2']);
     expect(estimateMinutes(problemsFor(['skill', 'feasibility']))).toBeGreaterThan(3);
   });
 });

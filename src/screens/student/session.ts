@@ -1,19 +1,22 @@
 import type { JoinedSession } from '../../api/types';
-import { problemsFor } from '../../items';
+import { problemsFor, stepsFor } from '../../items';
+import { assignForms, orderPairs } from '../../lib/forms';
 import { buildOrder } from '../../lib/order';
 import type { RunState } from '../../lib/run';
 
 /** Build a fresh (or resumed) run for a student code. Same code → same order and forms. */
 export function makeRun(joined: JoinedSession, studentCode: string, locked: string[] = []): RunState {
   const problems = problemsFor(joined.modules);
-  const { ids } = buildOrder(problems, studentCode);
+  const forms = assignForms(problems, studentCode);
+  const { ids } = buildOrder(problems, studentCode, orderPairs(problems, forms));
   const lockedSet = new Set(locked);
   // Resume at the first step that isn't stored yet.
   let pi = 0;
   let si = 0;
   outer: for (pi = 0; pi < ids.length; pi++) {
     const p = problems.find((x) => x.id === ids[pi])!;
-    for (si = 0; si < p.steps.length; si++) if (!lockedSet.has(`${p.id}.${p.steps[si].id}`)) break outer;
+    const steps = stepsFor(p, forms);
+    for (si = 0; si < steps.length; si++) if (!lockedSet.has(`${p.id}.${steps[si].id}`)) break outer;
   }
   const done = pi >= ids.length;
   return {
@@ -24,7 +27,7 @@ export function makeRun(joined: JoinedSession, studentCode: string, locked: stri
     modules: joined.modules,
     student_code: studentCode,
     sequence: ids,
-    forms: {},
+    forms,
     answers: {},
     pi: done ? ids.length - 1 : pi,
     si: done ? 0 : si,
@@ -33,6 +36,4 @@ export function makeRun(joined: JoinedSession, studentCode: string, locked: stri
   };
 }
 
-export function totalSteps(run: RunState, getSteps: (id: string) => number): number {
-  return run.sequence.reduce((a, id) => a + getSteps(id), 0);
-}
+

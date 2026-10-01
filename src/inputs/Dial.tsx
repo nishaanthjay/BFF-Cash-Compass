@@ -13,7 +13,8 @@ function arc(cx: number, cy: number, r0: number, r1: number, a0: number, a1: num
 }
 
 /** C3 believability dial, 1–5. Nothing is preselected; the needle appears on first choice. */
-export function Dial({ value, onChange, label }: { value: StepValue; onChange: OnValue; label: string }) {
+export function Dial({ value, onChange, label, low, high }: { value: StepValue; onChange: OnValue; label: string; low?: string; high?: string }) {
+  const labels = low || high ? [low ?? '', '', '', '', high ?? ''] : LABELS;
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const v = value.raw;
   const pick = (n: number, m: 'tapped' | 'typed') => onChange({ raw: n }, m);
@@ -67,7 +68,7 @@ export function Dial({ value, onChange, label }: { value: StepValue; onChange: O
             role="radio"
             className={s.opt}
             aria-checked={v === n}
-            aria-label={`${n}: ${LABELS[i]}`}
+            aria-label={labels[i] ? `${n}: ${labels[i]}` : `${n} of 5`}
             tabIndex={v === null ? (i === 0 ? 0 : -1) : v === n ? 0 : -1}
             onClick={() => pick(n, 'tapped')}
             onKeyDown={(e) => onKey(e, i)}
@@ -77,8 +78,8 @@ export function Dial({ value, onChange, label }: { value: StepValue; onChange: O
         ))}
       </div>
       <div className={s.ends} aria-hidden>
-        <span>1 = {LABELS[0].toLowerCase()}</span>
-        <span>5 = {LABELS[4].toLowerCase()}</span>
+        <span>1 = {labels[0].toLowerCase()}</span>
+        <span>5 = {labels[4].toLowerCase()}</span>
       </div>
     </div>
   );

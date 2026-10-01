@@ -10,11 +10,12 @@ import { DotPlot, type Selection } from '../../charts/DotPlot';
 import { Calibration, Dumbbell } from '../../charts/Ratings';
 import { CardHeat, Donut, PairedPlot, QuadGrid, SplitBars, TileGrid, Waterfall } from '../../charts/Misc';
 import { Scatter } from '../../charts/Scatter';
+import { CalendarHeat, PairTiles, Ridgeline, Sankey, Slope, SplitShare, TwoByTwo } from '../../charts/Stage3';
 import { Spaghetti } from '../../charts/Spaghetti';
 import { correctOf, getProblem } from '../../items';
 import { FAMILY_LABELS } from '../../items/families';
 import type { ChartSpec, Problem } from '../../items/types';
-import { cardFrequency, choiceSplit, curvePoints, curveShape, joinSteps, pairedValues, quadrantCounts, ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows, vsReference, waterfall } from '../../lib/analysis';
+import { averageRanks, bucketCounts, calendarIntensity, choiceOf, confidencePoints, correct2x2, correctByGroup, firstLastShares, pairPattern, ratioRows, sankey, spearman, valuesByForm, cardFrequency, choiceSplit, curvePoints, curveShape, joinSteps, pairedValues, quadrantCounts, ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows, vsReference, waterfall } from '../../lib/analysis';
 import { median } from '../../lib/logError';
 import { formatCode } from '../../lib/studentCode';
 import { formatUnit } from '../../lib/format';
@@ -281,6 +282,141 @@ function ItemChart({ p, c, d, scope, onSelect }: { p: Problem; c: ChartSpec; d: 
       return (
         <ChartCard title={c.title} subtitle={`“Compounds well” = Step 1 balance within ${c.x.withinPct}% of the true value.`} n={n} date={scope}>
           <QuadGrid q={q} labels={{ good: c.x.good, bad: c.x.bad, yes: c.belief.yes, no: c.belief.no }} suppressBelow={d.minCell} />
+        </ChartCard>
+      );
+    }
+    case 'sankey': {
+      const sd = sankey(data, p.id, c.columns, rc);
+      return (
+        <ChartCard title={c.title} n={sd.n} date={scope} tone="featured">
+          <Sankey data={sd} />
+        </ChartCard>
+      );
+    }
+    case 'pairTiles': {
+      const pp = pairPattern(data, c.a, c.b);
+      return (
+        <ChartCard title={c.title} subtitle={c.note} n={pp.n} date={scope} tone="featured">
+          <PairTiles p={pp} a={c.a.word} b={c.b.word} suppressBelow={d.minCell} />
+        </ChartCard>
+      );
+    }
+    case 'correctSplit': {
+      const g = correctByGroup(data, rc, { item: p.id, step: c.step }, c.group);
+      return (
+        <ChartCard title={c.title} n={g.yes.n + g.no.n} date={scope}>
+          <SplitShare groups={[{ label: c.group.yes, ...g.yes }, { label: c.group.no, ...g.no }]} />
+        </ChartCard>
+      );
+    }
+    case 'ridgeline': {
+      const rows = stepRows(data, p.id, c.step);
+      const by = valuesByForm(rows);
+      return (
+        <ChartCard title={c.title} subtitle="Raw dots per student with the median. Dots only below 30 per group; a density curve is added above that." n={rows.length} date={scope}>
+          <Ridgeline byForm={by} labels={c.labels} anchors={c.anchors} axis={c.axis} unit="usd" minForN={30} />
+        </ChartCard>
+      );
+    }
+    case 'logRatio': {
+      const rows = stepRows(data, p.id, c.step);
+      const ratios = ratioRows(rows, c.truth);
+      const under = ratios.filter((r) => (r.raw_value as number) < 0.95).length;
+      const over = ratios.filter((r) => (r.raw_value as number) > 1.05).length;
+      return (
+        <ChartCard title={c.title} subtitle={`Each dot is guess ÷ true value (${formatUnit(c.truth, c.unit)}), on a log scale. Left of 1× = too low, right = too high.`} n={ratios.length} date={scope} tone="featured" footnote={`${under} guessed more than 5% too low · ${over} more than 5% too high · the shaded band is ±5%`}>
+          <DotPlot
+            rows={ratios}
+            blank={Math.max(0, total - rows.length)}
+            axis={{ min: 0.01, max: 100, scale: 'log', unit: 'times' }}
+            correct={1}
+            codes={[]}
+            rc={rc}
+            bandPct={5}
+            extraRefs={(c.marks ?? []).map((m) => ({ value: m.value / c.truth, label: `${m.label} (${(m.value / c.truth).toPrecision(2)}×)` }))}
+            plain
+            ends={['guessed too low', 'guessed too high']}
+          />
+        </ChartCard>
+      );
+    }
+    case 'confError': {
+      const pts = confidencePoints(data, p.id, c.gut, c.step, c.truth);
+      return (
+        <ChartCard title={c.title} subtitle="Top right = confident (gut rating 4–5) and far off. Height is how many powers of ten away the guess was." n={pts.length} date={scope}>
+          <Scatter
+            points={pts}
+            x={{ kind: 'num', axis: { min: 0.5, max: 5.5, scale: 'linear', unit: 'count' } }}
+            y={{ min: 0, max: 2.5, scale: 'linear', unit: 'count' }}
+            xLabel="Gut rating (1 = almost certainly false, 5 = almost certainly true)"
+            yLabel="Powers of ten off"
+            showCodes={!d.projector}
+          />
+        </ChartCard>
+      );
+    }
+    case 'slope': {
+      const r1 = stepRows(data, p.id, c.first);
+      const r2 = stepRows(data, p.id, c.second);
+      return (
+        <ChartCard title={c.title} n={r2.length} date={scope} tone="featured">
+          <Slope first={averageRanks(r1, c.order)} second={averageRanks(r2, c.order)} order={c.order} labels={c.labels} n={r2.length} />
+        </ChartCard>
+      );
+    }
+    case 'rankCorr': {
+      const mk = (step: string) =>
+        stepRows(data, p.id, step)
+          .map((r) => ({ ...r, raw_value: spearman(choiceOf(r), c.order) }))
+          .filter((r) => r.raw_value !== null);
+      const r1 = mk(c.first);
+      const r2 = mk(c.second);
+      const axis = { min: -1, max: 1, scale: 'linear' as const, unit: 'count' as const };
+      return (
+        <ChartCard title={c.title} subtitle="Rank correlation with the computed order: 1 = identical, −1 = reversed." n={r2.length} date={scope}>
+          <p className="eyebrow">First ranking · median {r1.length ? (r1.map((r) => r.raw_value as number).sort((a, b) => a - b)[r1.length >> 1]).toFixed(2) : '—'}</p>
+          <DotPlot rows={r1} blank={0} axis={axis} correct={1} codes={[]} rc={rc} plain />
+          <p className="eyebrow">Second ranking · median {r2.length ? (r2.map((r) => r.raw_value as number).sort((a, b) => a - b)[r2.length >> 1]).toFixed(2) : '—'}</p>
+          <DotPlot rows={r2} blank={0} axis={axis} correct={1} codes={[]} rc={rc} plain />
+        </ChartCard>
+      );
+    }
+    case 'firstLast': {
+      const rows = stepRows(data, p.id, c.step);
+      const sh = firstLastShares(rows, Object.keys(c.labels));
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope}>
+          <p className="eyebrow">Ranked first (most believable)</p>
+          <CountBars items={sh.map((x) => ({ label: c.labels[x.id], n: x.first, tone: 'neutral' as const }))} total={rows.length} />
+          <p className="eyebrow">Ranked last (least believable)</p>
+          <CountBars items={sh.map((x) => ({ label: c.labels[x.id], n: x.last, tone: 'neutral' as const }))} total={rows.length} />
+        </ChartCard>
+      );
+    }
+    case 'calendarHeat': {
+      const rows = stepRows(data, p.id, c.step);
+      const st = stepOf(c.step);
+      const avg = st.input.type === 'calendar' && st.input.mode === 'count';
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope}>
+          <CalendarHeat cells={c.cells} columns={c.columns} cellWord={c.cellWord} values={calendarIntensity(rows, c.cells)} unit={avg ? 'avg' : 'share'} n={rows.length} />
+        </ChartCard>
+      );
+    }
+    case 'valueBuckets': {
+      const rows = stepRows(data, p.id, c.step);
+      const counts = bucketCounts(rows, c.buckets);
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope} footnote={c.note}>
+          <CountBars items={c.buckets.map((b, i) => ({ label: b.label, n: counts[i], tone: b.tone }))} total={rows.length} />
+        </ChartCard>
+      );
+    }
+    case 'twoByTwo': {
+      const q = correct2x2(data, p.id, c.x.step, c.y.step, rc);
+      return (
+        <ChartCard title={c.title} subtitle={c.note} n={q.n} date={scope}>
+          <TwoByTwo q={q} x={c.x.label} y={c.y.label} suppressBelow={d.minCell} />
         </ChartCard>
       );
     }

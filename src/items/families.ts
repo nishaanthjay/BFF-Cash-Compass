@@ -34,5 +34,12 @@ export const CODES = {
   NOINT: { label: 'No interest expected', family: 'compounding' },
   SAMEASCOMP: { label: 'Simple and compound treated the same', family: 'compounding' },
   NOTIME: { label: 'Time horizon ignored', family: 'compounding' },
+  REVPCT: { label: 'Reverse percent: added the fee % to the target', family: 'percent' },
+  ILLUSION: { label: 'Money illusion: $100 stays $100', family: 'percent' },
+  FRAME: { label: 'Went by the headline price', family: 'feasibility' },
+  NOTRIAL: { label: 'Trial discount ignored', family: 'feasibility' },
+  WORST: { label: 'Worst case, not expected value', family: 'credit_risk' },
+  RATE: { label: 'Used the crack chance itself', family: 'credit_risk' },
+  NOINTDEBT: { label: 'Interest on debt ignored', family: 'credit_risk' },
 } as const;
 export type Code = keyof typeof CODES;

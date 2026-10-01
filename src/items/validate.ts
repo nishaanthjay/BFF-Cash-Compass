@@ -10,6 +10,10 @@ export const PLANNED_IDS = new Set([
   'H1',
   'H2',
 ]);
+// S11 is shown as two separate problems (A and B) so they can sit far apart in the order.
+PLANNED_IDS.delete('S11');
+PLANNED_IDS.add('S11A');
+PLANNED_IDS.add('S11B');
 
 /** Returns human-readable problems; [] = bank is valid. Run via `npm test`. */
 export function validateProblems(problems: Problem[]): string[] {
@@ -19,7 +23,8 @@ export function validateProblems(problems: Problem[]): string[] {
 
   for (const p of problems) {
     const at = `[${p.id}]`;
-    if (!/^[SFH]\d{1,2}$/.test(p.id)) out.push(`${at} id must look like S1, F2, H1`);
+    if (!/^[SFH]\d{1,2}[A-Z]?$/.test(p.id)) out.push(`${at} id must look like S1, F2, H1 or S11A`);
+    if (p.form && !p.form.options.length) out.push(`${at} form needs at least one option`);
     if (ids.has(p.id)) out.push(`${at} duplicate id`);
     ids.add(p.id);
     if (!DECA_CATEGORIES.includes(p.deca_category)) out.push(`${at} unknown deca_category`);
@@ -32,6 +37,7 @@ export function validateProblems(problems: Problem[]): string[] {
       if (stepIds.has(s.id)) out.push(`${st} duplicate step id`);
       stepIds.add(s.id);
       if (!s.prompt.trim()) out.push(`${st} empty prompt`);
+      for (const f of [...(s.forms ?? []), ...Object.keys(s.promptByForm ?? {})]) if (!p.form?.options.includes(f)) out.push(`${st} mentions form "${f}" which the problem doesn't define`);
       for (const c of s.codes ?? []) {
         if (!(c.code in CODES)) out.push(`${st} unknown code ${c.code}`);
         if (!Number.isFinite(c.value)) out.push(`${st} code ${c.code} has no numeric value`);
@@ -56,6 +62,11 @@ export function validateProblems(problems: Problem[]): string[] {
         : c.type === 'choiceSplit' ? [c.step, c.by.step]
         : c.type === 'waterfall' ? [c.stack, c.profit]
         : c.type === 'quadrants' ? [c.x.step, c.belief.step]
+        : c.type === 'sankey' ? c.columns.map((x) => x.step)
+        : c.type === 'twoByTwo' ? [c.x.step, c.y.step]
+        : c.type === 'confError' ? [c.gut, c.step]
+        : c.type === 'slope' || c.type === 'rankCorr' ? [c.first, c.second]
+        : c.type === 'pairTiles' ? []
         : 'step' in c ? [c.step] : 'steps' in c ? c.steps : 'gut' in c ? [c.gut, c.post] : [];
       for (const r of refs) if (!stepIds.has(r)) out.push(`${at} admin chart "${c.title}" references unknown step ${r}`);
     }

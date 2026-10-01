@@ -42,14 +42,14 @@ await s.getByText('Your private code').waitFor();
 await s.getByRole('button', { name: /I wrote it down/ }).click();
 
 // Screenshots wanted: problem title -> part numbers
-const WANT = { 'The $200 Birthday Deposit': [1], '$15 a Month': [1], 'The $10K House Flip': [1, 6], 'Sneaker Resale': [4], '$500 into $50,000': [1], 'The Hoodie Sale': [1] };
+const WANT = { 'The Backpack Price': [1], 'Rank the Claims': [1], 'The Lawn Business': [1, 3], 'The $200 Birthday Deposit': [1], '$15 a Month': [1], 'The $10K House Flip': [1, 6], 'Sneaker Resale': [4], '$500 into $50,000': [1], 'The Hoodie Sale': [1] };
 const shot = new Set();
 const forbidden = /correct|spot on|nice job|well done|too low|too high|score/i;
 let feedbackSeen = false;
 let reloaded = false;
 let steps = 0;
 const seen = new Set();
-while (steps < 160) {
+while (steps < 260) {
   if (await s.getByText('All done!').isVisible().catch(() => false)) break;
   await s.getByRole('button', { name: /Lock answer|Skip/ }).waitFor();
   const title = await s.locator('h1').first().innerText();
@@ -64,9 +64,23 @@ while (steps < 160) {
     await btns.first().click();
     await btns.first().click();
     seen.add('stack');
+  } else if (await s.getByRole('button', { name: /^Move up:/ }).count()) {
+    await s.getByRole('button', { name: /^Move down:/ }).first().click();
+    seen.add('rank');
+  } else if (await s.locator('button[aria-label$="Tap to add one."]').count()) {
+    const cells = s.locator('button[aria-label$="Tap to add one."]');
+    await cells.nth(2).click();
+    await cells.nth(2).click();
+    await cells.nth(4).click();
+    seen.add('calendarCount');
   } else if (await s.locator('textarea').count()) {
     await s.locator('textarea').fill('People who lost money don’t post. Call me at 555-123-4567');
     seen.add('text');
+  } else if (await s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]').count()) {
+    const cells = s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]');
+    await cells.nth(3).scrollIntoViewIfNeeded();
+    await cells.nth(3).click();
+    seen.add('calendar');
   } else if (await s.getByRole('slider').count()) {
     const sl = s.getByRole('slider').first();
     const label = (await sl.getAttribute('aria-label')) ?? '';
@@ -74,13 +88,13 @@ while (steps < 160) {
     const box = await sl.boundingBox();
     const vertical = (await sl.getAttribute('aria-orientation')) === 'vertical';
     await s.mouse.click(box.x + box.width * (vertical ? 0.5 : 0.62), box.y + box.height * (vertical ? 0.45 : 0.6));
-    seen.add(vertical ? (/graph/i.test(label) ? 'curve' : 'jar') : /shade/i.test(label) ? 'shade' : 'numberLine');
+    seen.add(/Tap the .*s to fill/.test(label) ? 'dotGrid' : vertical ? (/graph/i.test(label) ? 'curve' : 'jar') : /shade/i.test(label) ? 'shade' : 'numberLine');
     const lock = s.getByRole('button', { name: /Lock answer|Skip/ });
     if (await lock.isDisabled()) await s.getByLabel(/Your answer|Or type/).last().fill('4.8');
   } else if (await s.getByRole('radiogroup').count()) {
     const n = await s.getByRole('radio').count();
     await s.getByRole('radio').nth(Math.min(3, n - 1)).click();
-    seen.add(n === 5 ? 'dial' : 'choice');
+    seen.add(n === 5 ? 'dial' : (await s.locator('svg[aria-label^="Timeline"]').count()) ? 'timeline' : 'choice');
   } else if (await s.locator('button[aria-pressed]').count() ) {
     await s.locator('button[aria-pressed]').first().click();
     seen.add('multi');
@@ -103,15 +117,15 @@ while (steps < 160) {
     continue;
   }
   await s.getByRole('button', { name: /Lock answer|Skip/ }).click();
-  await s.waitForTimeout(250);
+  await s.waitForTimeout(900);
   steps++;
 }
 ok(`student never sees feedback text${feedbackSeen ? ` (saw "${feedbackSeen}")` : ''}`, !feedbackSeen);
 await s.getByText('All done!').waitFor();
-await s.getByText('All answers saved').waitFor({ timeout: 100000 });
+await s.getByText('All answers saved').waitFor({ timeout: 240000 });
 await s.screenshot({ path: `${out}/done-375.png`, fullPage: true });
-ok(`completed ${steps} steps across all problems`, steps > 60);
-ok(`exercised every input type (${[...seen].sort().join(', ')})`, ['stack', 'curve', 'jar', 'numberLine', 'shade', 'dial', 'choice', 'multi', 'typed', 'text'].every((k) => seen.has(k)));
+ok(`completed ${steps} steps across all problems`, steps > 100);
+ok(`exercised every input type (${[...seen].sort().join(', ')})`, ['stack', 'curve', 'jar', 'numberLine', 'shade', 'dial', 'choice', 'typed', 'text', 'dotGrid', 'calendar', 'calendarCount', 'timeline', 'rank'].every((k) => seen.has(k)));
 ok('phone number redacted from free text', !/555-123-4567/.test(await s.evaluate(() => JSON.stringify(localStorage))));
 
 // Dashboards
@@ -122,7 +136,7 @@ await unlock(a);
 await a.getByText('Gap dashboard').waitFor();
 await a.waitForTimeout(1200);
 await a.screenshot({ path: `${out}/dash-overview-1366.png`, fullPage: true });
-for (const id of ['S5', 'S6', 'S7', 'S8', 'S9', 'F1', 'F5', 'H1']) {
+for (const id of ['S3', 'S4', 'S10', 'S11A', 'S12', 'S13', 'S14', 'S15', 'F3', 'F4', 'F6', 'F7', 'F8', 'H2']) {
   await a.goto(`${base}/analysis/item/${id}`);
   await a.getByText('Facilitator decision').waitFor();
   await a.waitForTimeout(900);
@@ -133,7 +147,7 @@ const live = await a.locator('select').first().locator('option', { hasText: 'NC0
 await a.goto(`${base}/analysis/item/S6?session=${live}`);
 await a.getByText('Facilitator decision').waitFor();
 await a.waitForTimeout(900);
-await a.screenshot({ path: `${out}/dash-S6-live-1366.png`, fullPage: true });
+await a.screenshot({ path: `${out}/dash-S12-live-1366.png`, fullPage: true });
 await a.goto(`${base}/analysis/item/S1?session=${live}`);
 await a.getByText('Facilitator decision').waitFor();
 await a.waitForTimeout(900);

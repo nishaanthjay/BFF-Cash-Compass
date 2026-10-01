@@ -4,7 +4,7 @@ import { Screen } from '../../components/Screen';
 import { StudentShell } from '../../components/StudentShell';
 import type { StepValue } from '../../inputs/types';
 import { redact } from '../../inputs/Choice';
-import { correctOf, getProblem } from '../../items';
+import { correctOf, formKeyOf, getProblem, stepsFor } from '../../items';
 import type { Prior } from '../../items/types';
 import { classify } from '../../lib/classify';
 import { clearRun, loadRun, saveRun, type RunState } from '../../lib/run';
@@ -31,15 +31,16 @@ export function Run() {
   }, [saved]);
 
   const problems = (run?.sequence ?? []).map((id) => getProblem(id)).filter((p) => p !== undefined);
-  const total = problems.reduce((a, p) => a + p.steps.length, 0);
+  const total = problems.reduce((a, p) => a + stepsFor(p, run?.forms).length, 0);
 
   const onLock = useCallback(
     (v: StepValue, t: LockedTelemetry) => {
       if (!run) return;
       const problem = problems[run.pi];
-      const step = problem.steps[run.si];
+      const steps = stepsFor(problem, run.forms);
+      const step = steps[run.si];
       const prior: Prior = {};
-      for (const st of problem.steps) prior[st.id] = run.answers[`${problem.id}.${st.id}`]?.raw ?? null;
+      for (const st of steps) prior[st.id] = run.answers[`${problem.id}.${st.id}`]?.raw ?? null;
       const text = v.text ? redact(v.text) : null;
       queue.addAnswer({
         answer_id: uuid(),
@@ -48,7 +49,7 @@ export function Run() {
         item_id: problem.id,
         item_version: problem.version,
         step_id: step.id,
-        form_version: run.forms[problem.id] ?? null,
+        form_version: run.forms[formKeyOf(problem)] ?? null,
         raw_value: v.raw,
         value: v.choice || v.extra ? { ...(v.choice ? { choice: v.choice } : {}), ...(v.extra ?? {}) } : null,
         input_method: t.input_method,
@@ -63,7 +64,7 @@ export function Run() {
         answered_at: new Date().toISOString(),
       });
       void syncNow();
-      const lastStep = run.si + 1 >= problem.steps.length;
+      const lastStep = run.si + 1 >= steps.length;
       const lastProblem = run.pi + 1 >= problems.length;
       const next: RunState = {
         ...run,
@@ -82,7 +83,7 @@ export function Run() {
 
   if (!run || problems.length === 0) return <Navigate to="/" replace />;
 
-  const doneSteps = problems.slice(0, run.pi).reduce((a, p) => a + p.steps.length, 0) + run.si;
+  const doneSteps = problems.slice(0, run.pi).reduce((a, p) => a + stepsFor(p, run.forms).length, 0) + run.si;
 
   if (run.done) {
     return (
@@ -102,14 +103,18 @@ export function Run() {
 
   const problem = problems[run.pi];
   const own: Record<string, number | null> = {};
-  for (const st of problem.steps) own[st.id] = run.answers[`${problem.id}.${st.id}`]?.raw ?? null;
+  const visible = stepsFor(problem, run.forms);
+  for (const st of visible) own[st.id] = run.answers[`${problem.id}.${st.id}`]?.raw ?? null;
 
   return (
     <StudentShell chapter={run.chapter_code} online={online} decor="quiet">
       <Screen>
         <StepView
           problem={problem}
-          step={problem.steps[run.si]}
+          step={visible[run.si]}
+          steps={visible}
+          form={run.forms[formKeyOf(problem)]}
+          seed={run.student_code}
           problemIndex={run.pi}
           problemCount={problems.length}
           done={doneSteps}

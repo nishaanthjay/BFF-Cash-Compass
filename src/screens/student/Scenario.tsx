@@ -2,7 +2,7 @@ import type { Scenario } from '../../items/types';
 import { formatUnit } from '../../lib/format';
 import s from './Scenario.module.css';
 
-const SOURCE = { post: 'posted', chat: 'said in a chat', message: 'sent a message', speech: 'says' } as const;
+const SOURCE = { post: 'posted', chat: 'said in a chat', message: 'sent a message', speech: 'says', ad: 'advertises' } as const;
 
 /**
  * The problem's context card. Shows only the scenario and the student's OWN earlier

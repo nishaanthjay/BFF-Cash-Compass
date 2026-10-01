@@ -53,6 +53,12 @@ begin
   r := sync_answers(tok, jsonb_build_array(stu), jsonb_build_array(mk || jsonb_build_object('answer_id', a1, 'step_id', 's1', 'raw_value', 23)));
   if (r->>'students')::int <> 1 or (r->>'answers')::int <> 1 then raise exception 'FAIL: sync %', r; end if;
 
+  -- split-problem ids (S11A) are accepted; malformed ids are refused per row
+  r := sync_answers(tok, '[]', jsonb_build_array(mk || jsonb_build_object('answer_id', gen_random_uuid(), 'item_id', 'S11A', 'step_id', 'sp', 'raw_value', 1)));
+  if (r->>'answers')::int <> 1 then raise exception 'FAIL: S11A refused %', r; end if;
+  r := sync_answers(tok, '[]', jsonb_build_array(mk || jsonb_build_object('answer_id', gen_random_uuid(), 'item_id', 'S11a', 'step_id', 'sp2', 'raw_value', 1)));
+  if jsonb_array_length(r->'rejected') <> 1 then raise exception 'FAIL: lowercase id accepted %', r; end if;
+
   -- idempotent retry
   r := sync_answers(tok, jsonb_build_array(stu), jsonb_build_array(mk || jsonb_build_object('answer_id', a1, 'step_id', 's1', 'raw_value', 23)));
   if (r->>'answers')::int <> 0 or jsonb_array_length(r->'rejected') <> 0 then raise exception 'FAIL: retry not idempotent %', r; end if;
@@ -68,7 +74,7 @@ begin
 
   -- resume returns locked step ids, not values
   r := resume_student(s.id, 'ABC234');
-  if r->'locked' <> '["S1.s1"]'::jsonb then raise exception 'FAIL: resume %', r; end if;
+  if not (r->'locked' @> '["S1.s1","S11A.sp"]'::jsonb) or jsonb_array_length(r->'locked') <> 2 then raise exception 'FAIL: resume %', r; end if;
   if resume_student(s.id, 'NOPE22') is not null then raise exception 'FAIL: resume unknown code'; end if;
 
   -- finishing sets finished_at
@@ -85,7 +91,7 @@ begin
   end loop;
   perform sync_answers(tok, '[]', ans);
   ans := '[]';
-  for i in 51..58 loop
+  for i in 51..57 loop
     ans := ans || (mk || jsonb_build_object('answer_id', gen_random_uuid(), 'step_id', 'r' || i, 'raw_value', i));
   end loop;
   perform sync_answers(tok, '[]', ans); -- exactly 60 in the window: still allowed

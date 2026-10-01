@@ -19,6 +19,14 @@ type Props = {
   codes: PredictedCode[];
   rc: RecodeMap;
   onSelect?: (sel: Selection) => void;
+  /** Width of the "correct" band in percent (default 1). */
+  bandPct?: number;
+  /** Extra labelled marks, e.g. a particular wrong guess like $400. */
+  extraRefs?: { value: number; label: string }[];
+  /** Draw every dot as a neutral filled circle (no classification). */
+  plain?: boolean;
+  /** Axis end labels, e.g. "guessed too low" / "guessed too high". */
+  ends?: [string, string];
 };
 
 const R = 5;
@@ -34,7 +42,7 @@ const FILL: Record<Cls, string> = { corr: chart.correct, wrong: chart.wrong, unk
  * predicted wrong values (dashed, labelled) as reference lines and ±1% bands.
  * Switches to a histogram above HISTOGRAM_N answers (pooled views).
  */
-export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Props) {
+export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect, bandPct = 1, extraRefs = [], plain, ends }: Props) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const vals = rows.filter((r) => r.raw_value !== null);
   const x = (v: number) => PAD_X + toFrac(v, axis) * (w - 2 * PAD_X);
@@ -42,12 +50,13 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
 
   // Reference lines first: label rows are assigned greedily so close values don't overprint.
   const refs = [
-    ...(correct !== null ? [{ code: 'CORR' as Code, value: correct, tol: 1 }] : []),
+    ...(correct !== null ? [{ code: 'CORR' as Code, value: correct, tol: bandPct }] : []),
     ...codes.map((c) => ({ code: c.code, value: c.value, tol: c.tolPct ?? 1 })),
+    ...extraRefs.map((e) => ({ code: 'UNK' as Code, value: e.value, tol: 1, custom: e.label })),
   ]
     .filter((r) => r.value >= axis.min && r.value <= axis.max)
     .sort((a, b) => a.value - b.value)
-    .map((r) => ({ ...r, text: r.code === 'CORR' ? `✓ ${formatUnit(r.value, axis.unit)}` : `${r.code} ${formatUnit(r.value, axis.unit)}` }));
+    .map((r) => ({ ...r, text: 'custom' in r && r.custom ? String(r.custom) : r.code === 'CORR' ? `✓ ${formatUnit(r.value, axis.unit)}` : `${r.code} ${formatUnit(r.value, axis.unit)}` }));
   const rowEnd: number[] = [];
   const placed = refs.map((r) => {
     const w2 = r.text.length * 6.6;
@@ -68,7 +77,7 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
   const plotH = useHist ? 140 : Math.min(260, spread * 2 + 12);
   const mid = TOP + plotH / 2;
   const base = TOP + plotH;
-  const H = base + 40;
+  const H = base + (ends || axis.scale === 'log' ? 44 : 40);
   const below = vals.filter((r) => (r.raw_value as number) < axis.min).length;
   const above = vals.filter((r) => (r.raw_value as number) > axis.max).length;
 
@@ -83,14 +92,18 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
     <div ref={ref} className={s.wrap}>
       <div className={s.legend} aria-hidden>
         <span className={s.key}>
-          <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={chart.correct} /></svg> Correct (±1%)
+          <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={chart.correct} /></svg> {plain ? 'One student' : `Correct (±${bandPct}%)`}
         </span>
-        <span className={s.key}>
-          <svg width="12" height="12"><path d="M6 0 L12 6 L6 12 L0 6 Z" fill={chart.wrong} /></svg> Named wrong pattern
-        </span>
-        <span className={s.key}>
-          <svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="none" stroke={color.mutedStrong} strokeWidth="1.8" /></svg> Unclassified
-        </span>
+        {!plain && (
+          <>
+            <span className={s.key}>
+              <svg width="12" height="12"><path d="M6 0 L12 6 L6 12 L0 6 Z" fill={chart.wrong} /></svg> Named wrong pattern
+            </span>
+            <span className={s.key}>
+              <svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="none" stroke={color.mutedStrong} strokeWidth="1.8" /></svg> Unclassified
+            </span>
+          </>
+        )}
       </div>
       <svg className={s.svg} width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label={`Distribution of ${vals.length} answers${axis.scale === 'log' ? ' on a log scale' : ''}.`}>
         {placed.map((r) => {
@@ -147,7 +160,7 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
               return b.n ? <rect key={i} x={x0 + 1} y={base - bh} width={Math.max(1, x1 - x0 - 2)} height={bh} rx={2} fill={chart.axis} /> : null;
             })
           : vals.map((r, i) => {
-              const c = cls(codesOf(r, rc));
+              const c: Cls = plain ? 'corr' : cls(codesOf(r, rc));
               const cx = xs[i];
               const cy = mid + ys[i];
               return c === 'wrong' ? (
@@ -159,6 +172,16 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
               );
             })}
         </g>
+        {ends && (
+          <g>
+            <text className={s.tick} x={PAD_X} y={base + 34} fontSize={fontPx.xs}>
+              ◂ {ends[0]}
+            </text>
+            <text className={s.tick} x={w - PAD_X} y={base + 34} textAnchor="end" fontSize={fontPx.xs}>
+              {ends[1]} ▸
+            </text>
+          </g>
+        )}
         {below > 0 && (
           <text className={s.refLabel} x={PAD_X} y={base - 6} fontSize={fontPx.xs} fill={color.foreground}>
             ◂ {below} below

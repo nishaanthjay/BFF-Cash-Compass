@@ -1,6 +1,7 @@
 import type { ExportData, ExportFilters, Recode, ResponseRow } from '../api/types';
 import type { Code } from '../items/families';
 import { median } from './logError';
+import { mulberry32 } from './rng';
 
 /** Cells with fewer students than this are hidden in projector mode. */
 export const MIN_CELL = 5;
@@ -328,4 +329,214 @@ export function choiceSplit(data: ExportData, item: string, step: string, by: { 
     for (const c of (r.value?.choice as string[] | undefined) ?? []) g[c] = (g[c] ?? 0) + 1;
   }
   return groups;
+}
+
+// ───────────── Stage 3 helpers ─────────────
+
+
+export const choiceOf = (r: ResponseRow): string[] => (r.value?.choice as string[] | undefined) ?? [];
+
+export interface SankeyData {
+  columns: { label: string; nodes: { label: string; n: number; tone: 'corr' | 'wrong' | 'unk' }[] }[];
+  /** links[c] connects column c to column c+1: from node index, to node index, count */
+  links: { from: number; to: number; n: number }[][];
+  n: number;
+}
+
+/** Flow of students across steps. Each node group is defined by codes or a chosen option; leftovers go to "Other". */
+export function sankey(
+  data: ExportData,
+  item: string,
+  columns: { step: string; label: string; groups: { label: string; codes?: Code[]; choice?: string; tone?: 'corr' | 'wrong' | 'unk' }[] }[],
+  rc: RecodeMap,
+): SankeyData {
+  const per = columns.map((c) => new Map(stepRows(data, item, c.step).map((r) => [studentKey(r), r])));
+  const groupOf = (ci: number, r: ResponseRow): number => {
+    const groups = columns[ci].groups;
+    const i = groups.findIndex((g) => (g.codes ? codesOf(r, rc).some((c) => g.codes!.includes(c)) : g.choice ? choiceOf(r).includes(g.choice) : false));
+    return i >= 0 ? i : groups.length; // "Other"
+  };
+  const keys = [...per[0].keys()].filter((k) => per.every((m) => m.has(k)));
+  const nodes = columns.map((c) => [...c.groups.map((g) => ({ label: g.label, n: 0, tone: g.tone ?? 'wrong' })), { label: 'Other', n: 0, tone: 'unk' as const }]);
+  const links: Map<string, number>[] = columns.slice(1).map(() => new Map());
+  for (const k of keys) {
+    const idx = per.map((m, ci) => groupOf(ci, m.get(k)!));
+    idx.forEach((g, ci) => nodes[ci][g].n++);
+    for (let ci = 0; ci < idx.length - 1; ci++) links[ci].set(`${idx[ci]}:${idx[ci + 1]}`, (links[ci].get(`${idx[ci]}:${idx[ci + 1]}`) ?? 0) + 1);
+  }
+  return {
+    columns: columns.map((c, i) => ({ label: c.label, nodes: nodes[i].filter((n, j) => n.n > 0 || j < c.groups.length) })),
+    links: links.map((m) => [...m.entries()].map(([k, n]) => ({ from: Number(k.split(':')[0]), to: Number(k.split(':')[1]), n }))),
+    n: keys.length,
+  };
+}
+
+export interface PairPattern {
+  SS: number;
+  SL: number;
+  LS: number;
+  LL: number;
+  n: number;
+  /** (SL − LS) / n: share more "soon then later" than "later then soon". */
+  net: number | null;
+}
+
+/** Cross-problem choice pattern: first letter from item A (S = early option), second from item B. */
+export function pairPattern(data: ExportData, a: { item: string; step: string; early: string }, b: { item: string; step: string; early: string }): PairPattern {
+  const bs = new Map(stepRows(data, b.item, b.step).map((r) => [studentKey(r), choiceOf(r)[0]]));
+  const out: PairPattern = { SS: 0, SL: 0, LS: 0, LL: 0, n: 0, net: null };
+  for (const r of stepRows(data, a.item, a.step)) {
+    const bc = bs.get(studentKey(r));
+    const ac = choiceOf(r)[0];
+    if (!ac || !bc) continue;
+    const k = `${ac === a.early ? 'S' : 'L'}${bc === b.early ? 'S' : 'L'}` as 'SS' | 'SL' | 'LS' | 'LL';
+    out[k]++;
+    out.n++;
+  }
+  out.net = out.n ? (out.SL - out.LS) / out.n : null;
+  return out;
+}
+
+/** Share correct on `step` for students whose choices on two other problems match a pattern. */
+export function correctByGroup(data: ExportData, rc: RecodeMap, step: { item: string; step: string }, g: { a: { item: string; step: string; pick: string }; b: { item: string; step: string; pick: string } }) {
+  const as = new Map(stepRows(data, g.a.item, g.a.step).map((r) => [studentKey(r), choiceOf(r)[0]]));
+  const bs = new Map(stepRows(data, g.b.item, g.b.step).map((r) => [studentKey(r), choiceOf(r)[0]]));
+  const yes: ResponseRow[] = [];
+  const no: ResponseRow[] = [];
+  for (const r of stepRows(data, step.item, step.step)) {
+    const k = studentKey(r);
+    if (!as.has(k) || !bs.has(k)) continue;
+    (as.get(k) === g.a.pick && bs.get(k) === g.b.pick ? yes : no).push(r);
+  }
+  const share = (rows: ResponseRow[]) => shareCorrect(rows, rc);
+  return { yes: { n: yes.length, share: share(yes) }, no: { n: no.length, share: share(no) } };
+}
+
+export const quantile = (xs: number[], q: number): number | null => {
+  const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!s.length) return null;
+  const pos = (s.length - 1) * q;
+  const lo = Math.floor(pos);
+  return s[lo] + (s[Math.min(s.length - 1, lo + 1)] - s[lo]) * (pos - lo);
+};
+
+const med = (xs: number[]) => quantile(xs, 0.5);
+
+/** Values by counterbalanced form (form_version) for one step. */
+export function valuesByForm(rows: ResponseRow[]): Map<string, number[]> {
+  const m = new Map<string, number[]>();
+  for (const r of rows) if (r.form_version && r.raw_value !== null) m.set(r.form_version, [...(m.get(r.form_version) ?? []), r.raw_value]);
+  return m;
+}
+
+export interface Anchoring {
+  index: number | null;
+  lo: number | null;
+  hi: number | null;
+  /** Smallest anchoring index this sample could reliably detect (80% power, 5% level; normal approximation). */
+  mde: number | null;
+  nHigh: number;
+  nLow: number;
+}
+
+/** Anchoring index (median high − median low) ÷ (anchor high − anchor low), with a seeded bootstrap interval. */
+export function anchoring(high: number[], low: number[], anchorHigh: number, anchorLow: number, iterations = 1000, seed = 7): Anchoring {
+  const span = anchorHigh - anchorLow;
+  const out: Anchoring = { index: null, lo: null, hi: null, mde: null, nHigh: high.length, nLow: low.length };
+  if (!high.length || !low.length) return out;
+  out.index = (med(high)! - med(low)!) / span;
+  const r = mulberry32(seed);
+  const pick = (xs: number[]) => Array.from({ length: xs.length }, () => xs[Math.floor(r() * xs.length)]);
+  const boots: number[] = [];
+  for (let i = 0; i < iterations; i++) boots.push((med(pick(high))! - med(pick(low))!) / span);
+  out.lo = quantile(boots, 0.025);
+  out.hi = quantile(boots, 0.975);
+  const all = [...high, ...low];
+  const mean = all.reduce((a, b) => a + b, 0) / all.length;
+  const sd = Math.sqrt(all.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, all.length - 1));
+  out.mde = (2.8 * sd * Math.sqrt(1 / high.length + 1 / low.length)) / span;
+  return out;
+}
+
+/** Gaussian kernel density at `points` (Silverman bandwidth). Used for ridgelines when n is large. */
+export function kde(values: number[], points: number[]): number[] {
+  const n = values.length;
+  if (n < 2) return points.map(() => 0);
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(values.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) || 1;
+  const h = 1.06 * sd * n ** -0.2;
+  return points.map((x) => values.reduce((a, v) => a + Math.exp(-0.5 * ((x - v) / h) ** 2), 0) / (n * h * Math.sqrt(2 * Math.PI)));
+}
+
+/** Spearman rank correlation between a student's order and the computed order (both lists of the same ids). */
+export function spearman(order: string[], truth: string[]): number | null {
+  const n = truth.length;
+  if (n < 2 || order.length !== n || order.some((id) => !truth.includes(id))) return null;
+  let d2 = 0;
+  for (const id of truth) d2 += (order.indexOf(id) - truth.indexOf(id)) ** 2;
+  return 1 - (6 * d2) / (n * (n * n - 1));
+}
+
+/** Average position (1 = top) per card across students' rankings. */
+export function averageRanks(rows: ResponseRow[], ids: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  const lists = rows.map(choiceOf).filter((l) => l.length === ids.length);
+  for (const id of ids) out[id] = lists.length ? lists.reduce((a, l) => a + l.indexOf(id) + 1, 0) / lists.length : NaN;
+  return out;
+}
+
+/** Share of students who put each card first / last. */
+export function firstLastShares(rows: ResponseRow[], ids: string[]): { id: string; first: number; last: number }[] {
+  const lists = rows.map(choiceOf).filter((l) => l.length === ids.length);
+  return ids.map((id) => ({ id, first: lists.filter((l) => l[0] === id).length, last: lists.filter((l) => l[l.length - 1] === id).length }));
+}
+
+/** Per-cell intensity for a calendar step: share who tapped it (multi) or average count per student (count). */
+export function calendarIntensity(rows: ResponseRow[], cells: number): { cell: number; value: number }[] {
+  const n = rows.length || 1;
+  return Array.from({ length: cells }, (_, k) => {
+    const i = k + 1;
+    let total = 0;
+    for (const r of rows) {
+      const counts = r.value?.counts as Record<string, number> | undefined;
+      const sel = r.value?.cells as number[] | undefined;
+      total += counts ? counts[i] ?? 0 : sel?.includes(i) ? 1 : 0;
+    }
+    return { cell: i, value: total / n };
+  });
+}
+
+export function bucketCounts(rows: ResponseRow[], buckets: { label: string; min: number; max: number }[]): number[] {
+  return buckets.map((b) => rows.filter((r) => r.raw_value !== null && r.raw_value >= b.min && r.raw_value < b.max).length);
+}
+
+/** 2×2 of "step x correct?" by "step y correct?" per student. */
+export function correct2x2(data: ExportData, item: string, xStep: string, yStep: string, rc: RecodeMap) {
+  const ys = new Map(stepRows(data, item, yStep).map((r) => [studentKey(r), codesOf(r, rc).includes('CORR')]));
+  const out = { both: 0, xOnly: 0, yOnly: 0, neither: 0, n: 0 };
+  for (const r of stepRows(data, item, xStep)) {
+    const y = ys.get(studentKey(r));
+    if (y === undefined) continue;
+    const x = codesOf(r, rc).includes('CORR');
+    out[x && y ? 'both' : x ? 'xOnly' : y ? 'yOnly' : 'neither']++;
+    out.n++;
+  }
+  return out;
+}
+
+/** (guess ÷ truth) per answer, skipping non-positive guesses. */
+export function ratioRows(rows: ResponseRow[], truth: number): ResponseRow[] {
+  return rows.filter((r) => r.raw_value !== null && r.raw_value > 0).map((r) => ({ ...r, raw_value: (r.raw_value as number) / truth }));
+}
+
+/** (gut rating, |log10 error|) per student, for "confident and far off". */
+export function confidencePoints(data: ExportData, item: string, gutStep: string, step: string, truth: number): XY[] {
+  const gs = new Map(stepRows(data, item, gutStep).map((r) => [studentKey(r), r.raw_value]));
+  const out: XY[] = [];
+  for (const r of stepRows(data, item, step)) {
+    const g = gs.get(studentKey(r));
+    if (g === undefined || g === null || r.raw_value === null || r.raw_value <= 0) continue;
+    out.push({ key: studentKey(r), code: r.student_code, x: g, y: Math.abs(Math.log10(r.raw_value / truth)) });
+  }
+  return out;
 }

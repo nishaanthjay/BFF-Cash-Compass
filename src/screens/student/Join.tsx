@@ -11,7 +11,7 @@ import { IconBadge } from '../../components/IconBadge';
 import { Input } from '../../components/Input';
 import { Screen } from '../../components/Screen';
 import { StudentShell } from '../../components/StudentShell';
-import { estimateMinutes, problemsFor } from '../../items';
+import { estimateMinutes, problemsFor, stepsFor } from '../../items';
 import { clearRun, loadRun, saveRun } from '../../lib/run';
 import { browserKV } from '../../lib/storage';
 import { formatCode, isStudentCode, newStudentCode, normalizeStudentCode } from '../../lib/studentCode';
@@ -84,7 +84,7 @@ export function Join() {
       const run = makeRun(joined, studentCode, locked);
       saveRun(kv, run);
       if (!resume) {
-        const expected = problemsFor(joined.modules).reduce((a, p) => a + p.steps.length, 0);
+        const expected = problemsFor(joined.modules).reduce((a, p) => a + stepsFor(p, run.forms).length, 0);
         queue.addStudent({ student_code: studentCode, session_id: joined.session_id, forms: run.forms, device_type: deviceType(), expected_steps: expected, started_at: run.started_at });
         void syncNow();
       }
