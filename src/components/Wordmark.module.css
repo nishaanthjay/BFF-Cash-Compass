@@ -1,0 +1,48 @@
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--color-foreground);
+}
+.bff {
+  display: inline-grid;
+  place-items: center;
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-sm);
+  box-shadow: var(--shadow-active);
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-lg);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+.name {
+  white-space: nowrap;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+.lg .bff {
+  font-size: var(--text-2xl);
+  padding: var(--space-2) var(--space-4);
+  box-shadow: var(--shadow-pop);
+}
+.lg .name {
+  white-space: nowrap;
+  font-size: var(--text-2xl);
+}
+.small {
+  display: block;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}

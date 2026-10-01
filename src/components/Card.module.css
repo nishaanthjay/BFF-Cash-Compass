@@ -1,0 +1,39 @@
+.card {
+  background: var(--color-card);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  position: relative;
+}
+.featured {
+  box-shadow: var(--shadow-card-featured);
+}
+.mint {
+  box-shadow: var(--shadow-card-mint);
+}
+.flat {
+  box-shadow: none;
+}
+.tight {
+  padding: var(--space-4);
+}
+/* Speech-bubble: one tight corner */
+.bubble {
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+}
+@media (max-width: 640px) {
+  .card {
+    padding: var(--space-5);
+    box-shadow: 4px 4px 0 var(--color-border);
+  }
+  .featured {
+    box-shadow: 4px 4px 0 var(--color-secondary);
+  }
+  .mint {
+    box-shadow: 4px 4px 0 var(--color-quaternary);
+  }
+  .flat {
+    box-shadow: none;
+  }
+}

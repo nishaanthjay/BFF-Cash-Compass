@@ -1,0 +1,36 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.shape {
+  position: absolute;
+}
+.wiggle {
+  animation: wiggle 5s ease-in-out infinite;
+  transform-origin: center;
+}
+.wiggle:nth-child(2n) {
+  animation-duration: 6.5s;
+  animation-direction: reverse;
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(6deg) translateY(-6px); }
+}
+/* Hide floating shapes wherever they could overlap content. */
+@media (max-width: 960px) {
+  .layer:not(.mobileOk) {
+    display: none;
+  }
+  .mobileOk .shape:not(.edge) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wiggle {
+    animation: none;
+  }
+}

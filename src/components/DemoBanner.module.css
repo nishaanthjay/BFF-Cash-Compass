@@ -1,0 +1,17 @@
+.banner {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  background: var(--color-tertiary);
+  color: var(--color-tertiary-foreground);
+  border-bottom: var(--border-width) solid var(--color-foreground);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+}

@@ -1,0 +1,18 @@
+.badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--radius-full);
+  border: var(--border-width) solid var(--color-foreground);
+  color: var(--color-foreground);
+}
+.sm { width: 32px; height: 32px; }
+.md { width: 44px; height: 44px; }
+.lg { width: 64px; height: 64px; }
+.gold { background: var(--color-tertiary); }
+.pink { background: var(--color-secondary); }
+.mint { background: var(--color-quaternary); }
+.blue { background: var(--color-primary); color: var(--color-primary-foreground); }
+.soft { background: var(--color-primary-soft); }
+.muted { background: var(--color-muted); }
+.danger { background: var(--color-danger-surface); color: var(--color-danger); border-color: var(--color-danger); }

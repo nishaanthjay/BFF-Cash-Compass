@@ -1,0 +1,22 @@
+.screen {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-10);
+}
+.student {
+  max-width: var(--layout-student-max);
+}
+.page {
+  max-width: var(--layout-page-max);
+  padding-inline: var(--space-6);
+}
+.wide {
+  max-width: 56rem;
+}
+@media (max-width: 640px) {
+  .page {
+    padding-inline: var(--space-4);
+  }
+}

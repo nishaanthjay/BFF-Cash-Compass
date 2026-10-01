@@ -1,0 +1,96 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-tertiary);
+  color: var(--color-tertiary-foreground);
+}
+.count {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.qMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.category {
+  color: var(--color-muted-foreground);
+}
+.prompt {
+  color: var(--color-foreground);
+}
+.lineZone {
+  padding: var(--space-2) 0;
+}
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-secondary-soft);
+}
+.verdict[data-kind='spot-on'] {
+  background: var(--color-quaternary-soft);
+}
+.verdict[data-kind='over'] {
+  background: var(--color-primary-soft);
+}
+.headline {
+  font-size: var(--text-3xl);
+  font-variant-numeric: tabular-nums;
+}
+.detail {
+  margin-top: var(--space-1);
+}
+.explain {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: var(--color-tertiary-soft);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-sm);
+}
+.explainText {
+  font-weight: var(--weight-medium);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+.sample {
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-sm);
+  background: var(--color-secondary);
+}
+@media (max-width: 640px) {
+  .headline {
+    font-size: var(--text-2xl);
+  }
+  .explainText {
+    font-size: var(--text-base);
+  }
+}

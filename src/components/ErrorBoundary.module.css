@@ -1,0 +1,14 @@
+.wrap {
+  max-width: var(--layout-student-max);
+  margin: var(--space-10) auto;
+  padding: var(--space-4);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.title {
+  font-size: var(--text-2xl);
+}
