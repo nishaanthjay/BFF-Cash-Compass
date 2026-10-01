@@ -54,6 +54,7 @@ export function isAnswered(step: Step, v: StepValue): boolean {
     case 'rank':
       return true; // the starting order is recorded, so locking an unchanged order is a valid answer
     case 'choice':
+    case 'timeline':
     case 'stack':
       return (v.choice?.length ?? 0) > 0;
     case 'calendar':

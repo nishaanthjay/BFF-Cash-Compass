@@ -76,11 +76,6 @@ while (steps < 260) {
   } else if (await s.locator('textarea').count()) {
     await s.locator('textarea').fill('People who lost money don’t post. Call me at 555-123-4567');
     seen.add('text');
-  } else if (await s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]').count()) {
-    const cells = s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]');
-    await cells.nth(3).scrollIntoViewIfNeeded();
-    await cells.nth(3).click();
-    seen.add('calendar');
   } else if (await s.getByRole('slider').count()) {
     const sl = s.getByRole('slider').first();
     const label = (await sl.getAttribute('aria-label')) ?? '';
@@ -91,6 +86,12 @@ while (steps < 260) {
     seen.add(/Tap the .*s to fill/.test(label) ? 'dotGrid' : vertical ? (/graph/i.test(label) ? 'curve' : 'jar') : /shade/i.test(label) ? 'shade' : 'numberLine');
     const lock = s.getByRole('button', { name: /Lock answer|Skip/ });
     if (await lock.isDisabled()) await s.getByLabel(/Your answer|Or type/).last().fill('4.8');
+  } else if (await s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]').count()) {
+    const cells = s.locator('[role=group]:not([aria-label^="Choose a"]) > button[aria-pressed]');
+    const k = Math.min(3, (await cells.count()) - 1);
+    await cells.nth(k).scrollIntoViewIfNeeded();
+    await cells.nth(k).click();
+    seen.add((await cells.count()) > 6 ? 'calendar' : 'multi');
   } else if (await s.getByRole('radiogroup').count()) {
     const n = await s.getByRole('radio').count();
     await s.getByRole('radio').nth(Math.min(3, n - 1)).click();
@@ -115,6 +116,13 @@ while (steps < 260) {
     await s.getByRole('button', { name: /Lock answer|Skip/ }).waitFor();
     ok('reload resumes on the same step (no going back)', /part 3 of/i.test(await s.getByText(/Part \d+ of \d+/).innerText()));
     continue;
+  }
+  if (await s.getByRole('button', { name: /Lock answer|Skip/ }).isDisabled()) {
+    await s.waitForTimeout(800);
+    if (await s.getByRole('button', { name: /Lock answer|Skip/ }).isDisabled()) {
+      console.log('STUCK', globalThis.__where, [...seen].join(','), (await s.locator('main').innerHTML()).slice(0, 2500));
+      process.exit(2);
+    }
   }
   await s.getByRole('button', { name: /Lock answer|Skip/ }).click();
   await s.waitForTimeout(900);

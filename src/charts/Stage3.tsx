@@ -155,7 +155,7 @@ export function Ridgeline({ byForm, labels, anchors, axis, unit, minForN }: { by
           const peak = density ? Math.max(...density) : 1;
           return (
             <g key={f}>
-              <text className={s.refLabel} x={L} y={i * rowH + 12} fontSize={fontPx.xs} fill={color.foreground}>
+              <text className={s.refLabel} x={anchors[f] !== undefined && x(anchors[f]) > (L + w - R) / 2 ? L : w - R} y={i * rowH + 12} textAnchor={anchors[f] !== undefined && x(anchors[f]) > (L + w - R) / 2 ? 'start' : 'end'} fontSize={fontPx.xs} fill={color.foreground}>
                 {labels[f]} · n = {vals.length}
               </text>
               <line x1={L} x2={w - R} y1={base} y2={base} stroke={color.foreground} strokeWidth={1} />
@@ -213,7 +213,8 @@ export function Slope({ first, second, order, labels, n }: { first: Record<strin
   const B = 14;
   const k = order.length;
   const y = (rank: number) => T + ((rank - 1) / (k - 1)) * (H - T - B);
-  const cols = [w * 0.34, w * 0.58, w * 0.82];
+  const side = Math.min(160, w * 0.36);
+  const cols = [side, side + (w - 2 * side) / 2, w - side];
   return (
     <div ref={ref} className={s.wrap}>
       <div className={s.legend} aria-hidden>
@@ -225,7 +226,7 @@ export function Slope({ first, second, order, labels, n }: { first: Record<strin
         </span>
       </div>
       <svg className={s.svg} width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label="Average rank of each claim: first ranking, second ranking, computed order">
-        {['First ranking', 'Second ranking', 'Computed order'].map((t, i) => (
+        {['First guess', 'Second guess', 'Computed'].map((t, i) => (
           <text key={t} className={s.refLabel} x={cols[i]} y={14} textAnchor="middle" fontSize={fontPx.xs} fill={color.foreground}>
             {t}
           </text>

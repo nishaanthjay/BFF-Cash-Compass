@@ -28,7 +28,7 @@ export function CodeBar({ steps, rc, onSelect }: { steps: { label: string; rows:
                   aria-label={`${CODES[c.code].label}: ${c.n} answers, ${pct(c.n / total)}${onSelect ? '. Activate to list student codes.' : ''}`}
                   onClick={() => onSelect?.({ label: `${st.label} · ${CODES[c.code].label}`, rows: st.rows.filter((r) => codesOf(r, rc).includes(c.code)) })}
                 >
-                  {c.n / total >= 0.2 ? `${c.code} ${pct(c.n / total)}` : ''}
+                  {c.n / total >= 0.25 ? `${c.code} ${pct(c.n / total)}` : ''}
                 </button>
               ))}
             </div>
@@ -36,7 +36,7 @@ export function CodeBar({ steps, rc, onSelect }: { steps: { label: string; rows:
           </div>
         );
       })}
-      <p className={s.note}>Blue = correct · pink = named wrong pattern · gray = unclassified. Labels on segments of 20% or more; hover or focus any segment for its code and count. Answers can carry more than one code.</p>
+      <p className={s.note}>Blue = correct · pink = named wrong pattern · gray = unclassified. Labels on segments of 25% or more; hover or focus any segment for its code and count. Answers can carry more than one code.</p>
     </div>
   );
 }

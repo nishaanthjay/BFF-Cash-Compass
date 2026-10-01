@@ -128,3 +128,13 @@ describe('lock gating for the Stage 3 inputs', () => {
     expect(isAnswered(grid, { raw: 0 })).toBe(true);
   });
 });
+
+describe('timeline lock gating', () => {
+  it('is answered only once a card is chosen', async () => {
+    const { isAnswered } = await import('../src/inputs/StepInput');
+    const { default: p } = await import('../src/items/bank/s11a-present-bias-a');
+    const step = p.steps[0];
+    expect(isAnswered(step, { raw: null })).toBe(false);
+    expect(isAnswered(step, { raw: null, choice: ['now'] })).toBe(true);
+  });
+});
