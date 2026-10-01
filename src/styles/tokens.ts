@@ -57,6 +57,8 @@ export const fontSize = {
   '4xl': step(5), // 48.8px
   '5xl': step(6), // 61px
   '6xl': step(7), // 76.3px
+  /** "$" / unit affix relative to the big estimate number */
+  affix: '0.6em',
 } as const;
 
 /** Numeric font sizes for SVG/Recharts which need numbers, not rem strings. */
@@ -130,12 +132,17 @@ export const motion = {
 
 /** Chart series styling (bars always carry a dark sticker stroke for ≥3:1 non-text contrast). */
 export const chart = {
-  series: {
-    PRE: color.mutedForeground,
-    POST: color.primary,
-    DELAYED: color.quaternary,
-  },
-  stroke: color.foreground,
+  /**
+   * Error direction is a diverging job: two poles + a neutral midpoint.
+   * Validated with the dataviz palette checker (CVD ΔE ≥ 11.9; the gray midpoint
+   * is intentionally low-chroma). Under = pink like the student reveal, over = blue.
+   */
+  under: '#DB2777',
+  exact: '#94A3B8',
+  over: color.primary,
+  /** Neutral bar fill for magnitudes (responses per chapter). */
+  bar: color.primary,
+  axis: color.mutedForeground,
   grid: color.border,
   highlight: color.tertiary,
 } as const;
@@ -156,6 +163,7 @@ export function cssVariables(): string {
   for (const [k, v] of Object.entries(shadow)) lines.push(`--shadow-${kebab(k)}: ${v};`);
   for (const [k, v] of Object.entries(space)) lines.push(`--space-${k}: ${v};`);
   for (const [k, v] of Object.entries(layout)) lines.push(`--layout-${kebab(k)}: ${v};`);
+  for (const [k, v] of Object.entries(chart)) lines.push(`--chart-${kebab(k)}: ${v};`);
   lines.push(`--ease-spring: ${motion.springCss};`);
   return `:root{${lines.join('')}}`;
 }

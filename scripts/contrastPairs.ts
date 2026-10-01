@@ -24,8 +24,8 @@ export const PAIRS: { fg: ColorToken; bg: ColorToken; use: string; min: number }
   { fg: 'danger', bg: 'background', use: 'Error text on cream', min: 4.5 },
   { fg: 'foreground', bg: 'card', use: 'UI: 2px borders vs card', min: 3 },
   { fg: 'ring', bg: 'background', use: 'UI: focus ring vs cream', min: 3 },
-  { fg: 'mutedForeground', bg: 'card', use: 'UI: PRE bar fill vs card', min: 3 },
-  { fg: 'primary', bg: 'card', use: 'UI: POST bar fill vs card', min: 3 },
+  { fg: 'mutedForeground', bg: 'card', use: 'UI: muted bar fill vs card', min: 3 },
+  { fg: 'primary', bg: 'card', use: 'UI: bar fill vs card', min: 3 },
 ];
 
 export { color };

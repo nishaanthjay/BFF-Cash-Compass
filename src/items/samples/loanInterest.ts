@@ -1,4 +1,4 @@
-import { defineParallel } from '../types';
+import { defineItem } from '../types';
 
 /** Total paid on a balance with monthly compounding at `apr`% and a fixed monthly payment. */
 export function totalPaid(balance: number, apr: number, payment: number): number {
@@ -15,8 +15,8 @@ export function totalPaid(balance: number, apr: number, payment: number): number
 }
 
 /** SAMPLE ITEM: placeholder for testing only. Not part of the real question bank. */
-export default defineParallel({
-  slot: 'sample-loan-interest',
+export default defineItem({
+  id: 'sample-loan-interest',
   title: 'SAMPLE · Phone on credit',
   version: 1,
   active: true,
@@ -26,10 +26,7 @@ export default defineParallel({
   unit: 'usd',
   prompt_template:
     'A phone costs {price:usd}. You put it on a credit card with {apr:pct} interest per year and pay {payment:usd} every month until it is paid off. About how much do you pay in total?',
-  forms: {
-    A: { price: 800, apr: 24, payment: 40 },
-    B: { price: 1000, apr: 22, payment: 50 },
-  },
+  variables: { price: 800, apr: 24, payment: 40 },
   truth: ({ price, apr, payment }) => totalPaid(price, apr, payment),
   explanation:
     'Small monthly payments stretch the loan out, and interest piles up every month. The {price:usd} phone really costs about {truth:usd0}.',

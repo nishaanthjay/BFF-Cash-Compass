@@ -41,3 +41,12 @@
 .hint {
   color: var(--color-muted-foreground);
 }
+.select {
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.compact {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+}

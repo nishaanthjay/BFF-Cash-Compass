@@ -1,0 +1,20 @@
+.wrap {
+  max-width: 420px;
+  margin: var(--space-10) auto;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.title {
+  font-size: var(--text-2xl);
+}
+.demo {
+  color: var(--color-muted-foreground);
+}

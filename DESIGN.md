@@ -61,10 +61,10 @@ The item screen is a plain white card with a huge live-formatted $ display and a
 
 ## Signature screens (design these first)
 1. Item screen: question card, giant number display, keypad, coin progress.
-2. POST reveal: a log-scale number line showing "your guess" vs "the real number" with the gap animating in, then a one-line explanation. This screen is also filmed for the DECA presentation video, so it must look great in a screen capture.
+2. Reveal (after the last item): a log-scale number line showing "your guess" vs "the real number" with the gap animating in, then a one-line explanation. This screen is also filmed for the DECA presentation video, so it must look great in a screen capture.
 
 ## Analysis view
-Same tokens, denser layout, reduced decoration. StatTiles with count-up on top, then ChartCards. Every chart is screenshot-ready (title, n, date, legible at presentation size). Gold highlights the headline delta (PRE to POST to DELAYED).
+Same tokens, denser layout, reduced decoration. StatTiles with count-up on top, then ChartCards. Every chart is screenshot-ready (title, n, date, legible at presentation size). Gold highlights the headline finding (the item with the largest median error).
 
 ## Layout and responsive
 - Container max-w-6xl on desktop; student flow is a single centered column max ~480px

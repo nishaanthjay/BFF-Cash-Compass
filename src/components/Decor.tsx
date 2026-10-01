@@ -65,7 +65,7 @@ function Coin({ size }: { size: number }) {
   );
 }
 
-type Placed = { el: ReactNode; style: CSSProperties; edge?: boolean };
+type Placed = { el: ReactNode; style: CSSProperties };
 
 const LAYOUTS: Record<Variant, Placed[]> = {
   landing: [
@@ -75,8 +75,6 @@ const LAYOUTS: Record<Variant, Placed[]> = {
     { el: <Squiggle stroke={color.primary} size={170} />, style: { top: '20%', right: '6%' } },
     { el: <Coin size={110} />, style: { top: '44%', right: '5%' } },
     { el: <Stripes fill={color.secondary} w={180} h={56} />, style: { bottom: '10%', right: '9%' } },
-    { el: <Dots fill={color.secondary} size={110} />, style: { top: '-30px', right: '-30px' }, edge: true },
-    { el: <Circle fill={color.tertiary} size={90} />, style: { bottom: '-40px', left: '-30px' }, edge: true },
   ],
   quiet: [
     { el: <Dots fill={color.primary} size={140} />, style: { top: '18%', left: '3%' } },
@@ -94,11 +92,10 @@ const LAYOUTS: Record<Variant, Placed[]> = {
 
 /** Margin-only decoration (DESIGN.md: "stable grid, wild decoration"). Never behind number zones. */
 export function Decor({ variant = 'quiet', wiggle = false }: { variant?: Variant; wiggle?: boolean }) {
-  const hasEdge = LAYOUTS[variant].some((p) => p.edge);
   return (
-    <div className={[s.layer, hasEdge && s.mobileOk].filter(Boolean).join(' ')} aria-hidden>
+    <div className={s.layer} aria-hidden>
       {LAYOUTS[variant].map((p, i) => (
-        <div key={i} className={[s.shape, wiggle && s.wiggle, p.edge && s.edge].filter(Boolean).join(' ')} style={p.style}>
+        <div key={i} className={[s.shape, wiggle && s.wiggle].filter(Boolean).join(' ')} style={p.style}>
           {p.el}
         </div>
       ))}

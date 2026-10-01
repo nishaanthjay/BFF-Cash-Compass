@@ -19,7 +19,7 @@ type Props = {
   onNext: () => void;
 };
 
-/** Signature screen 2: POST reveal. Log number line, gap animates in, then the one-line explanation. */
+/** Signature screen 2: the reveal, shown after the student finishes. Log number line, gap animates in, then the one-line explanation. */
 export function RevealView({ item, guess, index, total, onNext }: Props) {
   const reduce = useReducedMotion();
   const truth = truthOf(item);

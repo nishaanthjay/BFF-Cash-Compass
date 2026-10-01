@@ -1,0 +1,21 @@
+.foot {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: var(--space-8) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-muted-foreground);
+  text-align: center;
+}
+.links {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.links a {
+  color: var(--color-primary-deep);
+}

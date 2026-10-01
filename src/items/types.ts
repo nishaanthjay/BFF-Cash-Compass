@@ -17,7 +17,6 @@ export const DECA_LABELS: Record<DecaCategory, string> = {
   decision_making: 'Decision Making',
 };
 
-export type Form = 'A' | 'B';
 export type Unit = 'usd' | 'percent' | 'months' | 'years' | 'count';
 export type Variables = Record<string, number>;
 
@@ -29,15 +28,13 @@ export type Variables = Record<string, number>;
  * the explanation.
  */
 export interface Item {
-  /** Unique per form, e.g. "compound-growth-A". */
+  /** Unique, stable id, e.g. "compound-growth". Never reuse an id for a different question. */
   id: string;
-  /** Shared by the A and B versions of a parallel item; analysis groups by this. */
-  slot: string;
   /** Short human label for charts/tables. */
   title: string;
+  /** Bump when the wording or numbers change; stored with every response. */
   version: number;
   active: boolean;
-  form: Form;
   deca_category: DecaCategory;
   prompt_template: string;
   variables: Variables;
@@ -46,24 +43,13 @@ export interface Item {
   explanation: string;
   /** Optional extra values for templates, computed from variables (e.g. rule-of-72 doubling time). */
   derived?: (v: Variables) => Variables;
-  /** Order within a form (ascending). Defaults to file order. */
+  /** Display order (ascending). Defaults to file order. */
   order?: number;
   /** True for the placeholder SAMPLE items only. */
   sample?: boolean;
 }
 
-/** Everything except the per-form fields. */
-export type ParallelSpec = Omit<Item, 'id' | 'form' | 'variables'> & {
-  forms: Record<Form, Variables>;
-};
-
-/** Define the A and B version of an item in one place (same structure, different numbers). */
-export function defineParallel(spec: ParallelSpec): Item[] {
-  const { forms, ...common } = spec;
-  return (['A', 'B'] as const).map((form) => ({
-    ...common,
-    id: `${spec.slot}-${form}`,
-    form,
-    variables: forms[form],
-  }));
+/** Identity helper that gives item files type-checking and autocomplete. */
+export function defineItem(item: Item): Item {
+  return item;
 }

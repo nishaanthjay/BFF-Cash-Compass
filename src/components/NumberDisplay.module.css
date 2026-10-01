@@ -39,7 +39,7 @@
   font-size: var(--text-3xl);
 }
 .affix {
-  font-size: 0.6em;
+  font-size: var(--text-affix);
   color: var(--color-primary);
 }
 .placeholder {

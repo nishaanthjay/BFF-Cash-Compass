@@ -1,0 +1,26 @@
+name: Weekly CSV backup
+on:
+  schedule:
+    - cron: '43 6 * * 1' # Mondays, 06:43 UTC
+  workflow_dispatch:
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Export responses
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          MC_PASSCODE: ${{ secrets.MC_PASSCODE }}
+        run: npx vite-node scripts/backup.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: money-check-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 90

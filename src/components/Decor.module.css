@@ -22,10 +22,7 @@
 }
 /* Hide floating shapes wherever they could overlap content. */
 @media (max-width: 960px) {
-  .layer:not(.mobileOk) {
-    display: none;
-  }
-  .mobileOk .shape:not(.edge) {
+  .layer {
     display: none;
   }
 }
