@@ -1,138 +1,164 @@
-// Demo-mode end-to-end walk-through + screenshots.
-// Usage: node scripts/e2e.mjs <baseUrl> <outDir>
+// Demo-mode walk-through + screenshots. node scripts/e2e.mjs <base> <out>
 import { chromium } from 'playwright';
 const base = process.argv[2] ?? 'http://localhost:5173';
 const out = process.argv[3] ?? 'screenshots';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium' });
 const errors = [];
 const checks = [];
-const ok = (name, cond) => checks.push(`${cond ? 'PASS' : 'FAIL'} ${name}`);
-
-async function ctxPage(vp, reduced = false) {
-  const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 2, reducedMotion: reduced ? 'reduce' : 'no-preference' });
-  const p = await ctx.newPage();
+const ok = (n, c) => checks.push(`${c ? 'PASS' : 'FAIL'} ${n}`);
+const M = { width: 375, height: 812 };
+const D = { width: 1366, height: 900 };
+const ctx = await browser.newContext({ viewport: D, deviceScaleFactor: 2 });
+const watch = (p) => {
   p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   p.on('pageerror', (e) => errors.push(String(e)));
-  return { ctx, p };
-}
+};
 const noHScroll = (p) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
-const M = { width: 375, height: 812 };
-const D = { width: 1366, height: 860 };
 
-// 1. Facilitator (desktop): unlock, start session TX999
-const { ctx: fctx, p: f } = await ctxPage(D);
+// Facilitator: start TX999 with all modules
+const f = await ctx.newPage();
+watch(f);
 await f.goto(`${base}/facilitator`);
 await f.getByLabel('Passcode').fill('demo');
 await f.getByRole('button', { name: 'Unlock' }).click();
 await f.getByLabel('Chapter code').fill('TX999');
+await f.getByLabel('Group label (optional)').fill('Grade 7 · demo');
+await f.screenshot({ path: `${out}/s1-facilitator-new-1366.png` });
 await f.getByRole('button', { name: 'Start session' }).click();
 await f.getByText('Students: join now').waitFor();
-await f.waitForTimeout(1200);
-await f.screenshot({ path: `${out}/facilitator-live-1366.png` });
 
-// Student shares the same browser storage (demo mock lives in localStorage)
-const s = await fctx.newPage();
+// Student on a phone
+const s = await ctx.newPage();
+watch(s);
 await s.setViewportSize(M);
-s.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-s.on('pageerror', (e) => errors.push(String(e)));
-s.on('requestfailed', (r) => console.log('requestfailed', r.url()));
 await s.goto(`${base}/?c=TX999`);
-await s.waitForTimeout(700);
-await s.screenshot({ path: `${out}/join-375.png`, fullPage: true });
-ok('join 375 no horizontal scroll', await noHScroll(s));
-await s.getByRole('button', { name: 'Let’s go' }).click();
-await s.getByText('Question 1').first().waitFor();
-const typeAndLock = async (g) => {
-  for (const ch of g) await s.getByRole('button', { name: ch, exact: true }).click();
-  ok('item 375 no horizontal scroll', await noHScroll(s));
-  await s.getByRole('button', { name: /Lock/ }).click();
-  await s.waitForTimeout(450);
-};
-await typeAndLock('2500');
-// Reload mid-run: resumes on question 2
-await s.reload();
-await s.getByText('Question 2').first().waitFor();
-ok('run resumes after reload', true);
-// Offline for the rest: answers must queue locally
-await s.context().setOffline(true);
-await typeAndLock('950');
-await typeAndLock('1200');
-const queued = await s.evaluate(() => JSON.parse(localStorage.getItem('mc.queue') || '{}').answers?.length ?? 0);
-ok(`offline answers queued locally (${queued})`, queued === 2);
-await s.getByText('The reveal').waitFor();
-await s.waitForTimeout(2600);
-await s.screenshot({ path: `${out}/reveal-flow-375.png`, fullPage: true });
-for (let i = 0; i < 2; i++) {
-  await s.getByRole('button', { name: 'Next reveal' }).click();
-  await s.waitForTimeout(400);
+await s.getByRole('button', { name: 'Next' }).click();
+await s.getByText('Your private code').waitFor();
+await s.screenshot({ path: `${out}/s1-code-375.png`, fullPage: true });
+await s.getByRole('button', { name: /I wrote it down/ }).click();
+
+const forbidden = /correct|spot on|nice job|well done|too low|too high|score/i;
+let shots = new Set();
+let steps = 0;
+let feedbackSeen = false;
+let reloaded = false;
+while (steps < 40) {
+  if (await s.getByText('All done!').isVisible().catch(() => false)) break;
+  await s.getByRole('button', { name: /Lock answer|Skip/ }).waitFor();
+  const title = await s.locator('h1').first().innerText();
+  const part = await s.getByText(/Part \d+ of \d+/).innerText();
+  const tag = `${title}-${part}`.replace(/[^\w]+/g, '-').toLowerCase();
+  const body = await s.locator('main').innerText();
+  if (forbidden.test(body.replace(/Calculator OK/, ''))) feedbackSeen = body.match(forbidden)[0];
+  // Interact with whatever input is shown
+  if (await s.getByRole('radiogroup').count()) {
+    await s.getByRole('radio').nth(3).click();
+  } else if (await s.getByRole('slider').count()) {
+    const sl = s.getByRole('slider').first();
+    const box = await sl.boundingBox();
+    await s.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.6);
+    if ((await s.getByRole('slider').getAttribute('aria-valuetext')) === 'Nothing shaded yet' || /2 of/i.test(part)) {
+      await s.getByLabel(/Your answer|Or type/).last().fill('4.8');
+    }
+  } else if (await s.locator('textarea').count()) {
+    await s.locator('textarea').fill('People who lost money don’t post. Call me at 555-123-4567');
+  } else {
+    for (const ch of '12') await s.getByRole('button', { name: ch, exact: true }).click();
+  }
+  ok(`${tag}: no horizontal scroll`, await noHScroll(s));
+  const key = title.slice(0, 12);
+  if (!shots.has(key) || /part 1/i.test(part)) {
+    if (!shots.has(tag)) {
+      await s.screenshot({ path: `${out}/s1-step-${tag}-375.png`, fullPage: true });
+      shots.add(tag);
+      shots.add(key);
+    }
+  }
+  if (steps === 2 && !reloaded) {
+    reloaded = true;
+    await s.reload();
+    await s.getByRole('button', { name: /Lock answer|Skip/ }).waitFor();
+    ok('reload resumes on the same step (no going back)', /part 3 of/i.test(await s.getByText(/Part \d+ of \d+/).innerText()));
+    continue;
+  }
+  await s.getByRole('button', { name: /Lock answer|Skip/ }).click();
+  await s.waitForTimeout(350);
+  steps++;
 }
-await s.getByRole('button', { name: 'Finish' }).click();
-await s.getByText('You did it!').waitFor();
-await s.waitForTimeout(600);
-await s.screenshot({ path: `${out}/done-offline-375.png`, fullPage: true });
-await s.context().setOffline(false);
-await s.evaluate(() => window.dispatchEvent(new Event('online')));
+ok(`student never sees feedback text${feedbackSeen ? ` (saw "${feedbackSeen}")` : ''}`, !feedbackSeen);
+await s.getByText('All done!').waitFor();
 await s.getByText('All answers saved').waitFor({ timeout: 15000 });
-ok('queue synced after reconnect', true);
-await s.screenshot({ path: `${out}/done-synced-375.png`, fullPage: true });
+await s.screenshot({ path: `${out}/s1-done-375.png`, fullPage: true });
+ok(`completed ${steps} steps`, steps > 10);
+const red = await s.evaluate(() => JSON.stringify(localStorage));
+ok('phone number redacted from free text', !/555-123-4567/.test(red));
 
-// Facilitator live count picks the student up
-await f.waitForTimeout(5500);
-const finished = await f.locator('text=Finished').locator('..').locator('..').innerText();
-ok(`facilitator sees finished student (${finished.replace(/\s+/g, ' ')})`, /1/.test(finished));
-await f.screenshot({ path: `${out}/facilitator-count-1366.png` });
-// Session recovery after reload
-await f.reload();
-await f.getByText('Students: join now').waitFor();
-ok('facilitator session resumes after reload', true);
-await f.getByRole('button', { name: 'Close session' }).click();
-await f.getByRole('button', { name: 'Tap again to close session' }).click();
-await f.getByText('Session closed').first().waitFor();
-ok('session closes', true);
+// Desktop step screenshot (fresh student, first item)
+const s2 = await ctx.newPage();
+watch(s2);
+await s2.goto(`${base}/?c=TX999`);
+await s2.evaluate(() => localStorage.removeItem('mc.run'));
+await s2.goto(`${base}/?c=TX999`);
+await s2.getByRole('button', { name: 'Next' }).click();
+await s2.getByRole('button', { name: /I wrote it down/ }).click();
+await s2.getByRole('button', { name: /Lock answer/ }).waitFor();
+const sl = s2.getByRole('slider');
+if (await sl.count()) {
+  const b = await sl.first().boundingBox();
+  await s2.mouse.click(b.x + b.width * 0.62, b.y + b.height * 0.6);
+}
+await s2.screenshot({ path: `${out}/s1-step-1366.png`, fullPage: true });
 
-// Joining a closed session fails
-await s.goto(`${base}/?c=TX999`);
-await s.getByRole('button', { name: 'Let’s go' }).click();
-await s.getByText('No open session').waitFor();
-ok('closed session rejects join', true);
+// Dashboard
+const a = await ctx.newPage();
+watch(a);
+const unlock = async (pg) => {
+  await pg.getByLabel('Passcode').fill('demo');
+  await pg.getByRole('button', { name: 'Unlock' }).click();
+};
+await a.goto(`${base}/analysis`);
+await unlock(a);
+await a.getByText('Gap dashboard').waitFor();
+await a.waitForTimeout(1200);
+await a.screenshot({ path: `${out}/s1-dash-overview-1366.png`, fullPage: true });
+for (const id of ['S1', 'S2', 'F2']) {
+  await a.goto(`${base}/analysis/item/${id}`);
+  await a.getByText('Facilitator decision').waitFor();
+  await a.waitForTimeout(900);
+  await a.screenshot({ path: `${out}/s1-dash-${id}-1366.png`, fullPage: true });
+}
+// Live workshop scope + click-through
+const live = await a.locator('select').first().locator('option', { hasText: 'NC027' }).getAttribute('value');
+await a.goto(`${base}/analysis/item/S1?session=${live}`);
+await a.getByText('Facilitator decision').waitFor();
+await a.waitForTimeout(900);
+await a.locator('[role=button][aria-label^="List students near"]').first().click();
+ok('click-through lists student codes', await a.getByRole('dialog').isVisible());
+await a.screenshot({ path: `${out}/s1-dash-S1-live-click-1366.png`, fullPage: true });
+await a.goto(`${base}/analysis/item/S1?session=${live}&projector=1`);
+await a.getByText('Facilitator decision').waitFor();
+await a.waitForTimeout(600);
+ok('projector mode: no click-through bands', (await a.locator('[role=button][aria-label^="List students near"]').count()) === 0);
+await a.screenshot({ path: `${out}/s1-dash-S1-projector-1366.png`, fullPage: true });
+const am = await ctx.newPage();
+watch(am);
+await am.setViewportSize(M);
+await am.goto(`${base}/analysis/item/F2`);
+await unlock(am);
+await am.getByText('Facilitator decision').waitFor();
+await am.waitForTimeout(900);
+ok('dashboard 375 no horizontal scroll', await noHScroll(am));
+await am.screenshot({ path: `${out}/s1-dash-F2-375.png`, fullPage: true });
 
-// 2. Analysis desktop + mobile
-await f.goto(`${base}/analysis`);
-await f.getByText('Median log error by item').waitFor();
-await f.waitForTimeout(1500);
-await f.screenshot({ path: `${out}/analysis-1366.png`, fullPage: true });
-const dl = f.waitForEvent('download');
-await f.getByRole('button', { name: /Export CSV/ }).click();
-const file = await dl;
-const csvPath = `${out}/export.csv`;
-await file.saveAs(csvPath);
-ok('CSV downloaded', true);
-await f.getByLabel('Chapter', { exact: true }).selectOption('WA401');
-await f.waitForTimeout(800);
-ok('low-n flag visible for WA401', await f.getByText('Low n').first().isVisible());
-
-const { p: am } = await ctxPage(M);
-await am.goto(`${base}/analysis`);
-await am.getByLabel('Passcode').fill('demo');
-await am.getByRole('button', { name: 'Unlock' }).click();
-await am.getByText('Median log error by item').waitFor();
-await am.waitForTimeout(1500);
-await am.screenshot({ path: `${out}/analysis-375.png`, fullPage: true });
-ok('analysis 375 no horizontal scroll', await noHScroll(am));
-
-// 3. Reduced motion: count-up disabled -> final values immediately
-const { p: rm } = await ctxPage(D, true);
-await rm.goto(`${base}/facilitator`);
-await rm.getByLabel('Passcode').fill('demo');
-await rm.getByRole('button', { name: 'Unlock' }).click();
-await rm.getByText('Run a Money Check').waitFor();
+const rmCtx = await browser.newContext({ viewport: D, reducedMotion: 'reduce' });
+const rm = await rmCtx.newPage();
+watch(rm);
 await rm.goto(`${base}/analysis`);
-await rm.getByText('Median log error by item').waitFor();
-const tileNow = await rm.locator('[aria-label^="Responses:"] span').first().innerText();
-const tileLabel = await rm.locator('[aria-label^="Responses:"]').getAttribute('aria-label');
-ok(`reduced motion: StatTile shows final value immediately (${tileNow} vs ${tileLabel})`, tileLabel.endsWith(tileNow));
-const anim = await rm.evaluate(() => getComputedStyle(document.body).getPropertyValue('--x') || matchMedia('(prefers-reduced-motion: reduce)').matches);
-ok('reduced motion media query active', anim === true);
+await unlock(rm);
+await rm.getByText('Gap dashboard').waitFor();
+const lbl = await rm.locator('[aria-label^="Started:"]').getAttribute('aria-label');
+const shown = await rm.locator('[aria-label^="Started:"] span').first().innerText();
+ok(`reduced motion: count-up skipped (${shown} vs ${lbl})`, lbl.endsWith(shown));
 
 console.log(checks.join('\n'));
 console.log('console errors:', errors.length ? errors : 'none');

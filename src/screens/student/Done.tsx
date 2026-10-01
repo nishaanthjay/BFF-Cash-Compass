@@ -1,25 +1,22 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowDown, ArrowUp, Check, CloudCheck, CloudOff, RefreshCw, TriangleAlert } from 'lucide-react';
+import { CloudCheck, CloudOff, KeyRound, RefreshCw, TriangleAlert } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { CoinGraphic } from '../../components/Decor';
 import { IconBadge } from '../../components/IconBadge';
-import { truthOf } from '../../items';
-import type { Item } from '../../items/types';
-import { verdictFor } from '../../lib/verdict';
+import { formatCode } from '../../lib/studentCode';
 import { syncNow, useOnline, useQueue } from '../../lib/sync';
 import { motion as m } from '../../styles/tokens';
 import s from './Done.module.css';
 
-type Props = { items: Item[]; answers: Record<string, number>; onFinish: () => void };
+type Props = { studentCode: string; onFinish: () => void };
 
-export function Done({ items, answers, onFinish }: Props) {
+/** Neutral finish: no score, no correct answers. */
+export function Done({ studentCode, onFinish }: Props) {
   const reduce = useReducedMotion();
   const q = useQueue();
   const online = useOnline();
-  const kinds = items.map((it) => verdictFor(answers[it.id] ?? 0, truthOf(it)).kind);
-  const tally = { spot: kinds.filter((k) => k === 'spot-on').length, under: kinds.filter((k) => k === 'under').length, over: kinds.filter((k) => k === 'over').length };
-  const pending = q.answers.length + q.attempts.length;
+  const pending = q.answers.length + q.students.length;
 
   return (
     <div className={s.stack}>
@@ -37,27 +34,17 @@ export function Done({ items, answers, onFinish }: Props) {
             </motion.div>
           ))}
         </div>
-        <h1 className={s.title}>You did it!</h1>
-        <p>Thanks for taking Money Check. Your estimates help BFF of America teach money skills that stick.</p>
+        <h1 className={s.title}>All done!</h1>
+        <p>Thanks for taking Money Check. Your facilitator will talk through these questions in the workshop.</p>
       </div>
 
-      <div className={s.scoreRow}>
-        <div className={s.score}>
-          <IconBadge icon={Check} tone="mint" size="sm" />
-          <span className={s.scoreNum}>{tally.spot}</span>
-          <span className="eyebrow">Spot on</span>
+      <Card tight className={s.status}>
+        <IconBadge icon={KeyRound} tone="gold" />
+        <div>
+          <strong>Your code: <span className="num">{formatCode(studentCode)}</span></strong>
+          <span>Keep it if your facilitator asks for it later.</span>
         </div>
-        <div className={s.score}>
-          <IconBadge icon={ArrowDown} tone="pink" size="sm" />
-          <span className={s.scoreNum}>{tally.under}</span>
-          <span className="eyebrow">Too low</span>
-        </div>
-        <div className={s.score}>
-          <IconBadge icon={ArrowUp} tone="blue" size="sm" />
-          <span className={s.scoreNum}>{tally.over}</span>
-          <span className="eyebrow">Too high</span>
-        </div>
-      </div>
+      </Card>
 
       <Card tight className={s.status} aria-live="polite">
         {pending === 0 ? (

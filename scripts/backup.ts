@@ -4,7 +4,6 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createSupabaseApi } from '../src/api/supabase';
-import { getItem } from '../src/items';
 import { responsesToCsv } from '../src/lib/csv';
 
 const { SUPABASE_URL, SUPABASE_ANON_KEY, MC_PASSCODE } = process.env;
@@ -17,6 +16,6 @@ const api = createSupabaseApi(SUPABASE_URL, SUPABASE_ANON_KEY);
 const data = await api.exportData(MC_PASSCODE);
 const stamp = new Date().toISOString().slice(0, 10);
 mkdirSync('backups', { recursive: true });
-writeFileSync(`backups/money-check-${stamp}.csv`, responsesToCsv(data.responses, (id) => getItem(id)?.deca_category));
+writeFileSync(`backups/money-check-${stamp}.csv`, responsesToCsv(data.responses, data.recodes));
 writeFileSync(`backups/money-check-${stamp}.json`, JSON.stringify(data));
-console.log(`Backed up ${data.responses.length} responses, ${data.attempts.length} attempts, ${data.sessions.length} sessions.`);
+console.log(`Backed up ${data.responses.length} step responses, ${data.students.length} students, ${data.sessions.length} sessions.`);

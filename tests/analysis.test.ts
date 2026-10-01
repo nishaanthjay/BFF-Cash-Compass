@@ -1,71 +1,78 @@
 import { describe, expect, it } from 'vitest';
-import { applyFilters, summarize } from '../src/lib/analysis';
-import type { ExportData } from '../src/api/types';
-import type { DecaCategory } from '../src/items/types';
-import { answer, attempt } from './fixtures';
+import { codeShares, codesOf, histogram, qualityFlags, ratingPairs, receiptMismatch, recodeMap, shadeMismatch, shareCorrect, topBar } from '../src/lib/analysis';
+import { answer, dataset, resp, student } from './fixtures';
+import { beeswarm } from '../src/charts/beeswarm';
 
-function data(): ExportData {
-  const a1 = attempt('s1', 2);
-  const a2 = attempt('s1', 2);
-  const a3 = attempt('s2', 2);
-  const tag = (r: ReturnType<typeof answer>, chapter: string, day = '2026-09-01') => ({ ...r, chapter_code: chapter, answered_at: `${day}T10:00:00.000Z` });
-  return {
-    sessions: [
-      { id: 's1', chapter_code: 'AAA', status: 'closed', created_at: '2026-09-01T09:00:00Z', closed_at: null },
-      { id: 's2', chapter_code: 'BBB', status: 'closed', created_at: '2026-09-10T09:00:00Z', closed_at: null },
-    ],
-    attempts: [
-      { ...a1, chapter_code: 'AAA' },
-      { ...a2, chapter_code: 'AAA' },
-      { ...a3, chapter_code: 'BBB', started_at: '2026-09-10T09:00:00Z' },
-    ],
-    responses: [
-      tag(answer(a1, 'x', 50), 'AAA'), // ln .5
-      tag(answer(a1, 'y', 400), 'AAA'), // ln 4
-      tag(answer(a2, 'x', 200), 'AAA'), // ln 2   (a2 incomplete)
-      tag(answer(a3, 'x', 0), 'BBB', '2026-09-10'), // excluded
-      tag(answer(a3, 'y', 100), 'BBB', '2026-09-10'), // exact
-    ],
-  };
-}
-const cat = (id: string): DecaCategory => (id === 'x' ? 'investing' : 'credit_debt');
+const a = student('s1', 'AAA222', 3);
+const b = student('s1', 'BBB333', 3);
 
-describe('summarize', () => {
-  const s = summarize(data(), cat, ['y', 'x']);
-  it('counts responses, chapters, sessions', () => {
-    expect([s.responses, s.chapters, s.sessions]).toEqual([5, 2, 2]);
+describe('codes and shares', () => {
+  const rows = [resp(answer(a, 'S1', 's1', 36, ['CORR'])), resp(answer(b, 'S1', 's1', 23, ['PAD'])), resp(answer(student('s1', 'CCC444'), 'S1', 's1', 30, ['UNK']))];
+  it('manual recodes win over auto codes', () => {
+    const rc = recodeMap([{ answer_id: rows[2].answer_id, codes: ['DEC'], coded_at: '' }]);
+    expect(codesOf(rows[2], rc)).toEqual(['DEC']);
+    expect(codesOf(rows[0], rc)).toEqual(['CORR']);
   });
-  it('completion = attempts with every item answered / attempts', () => {
-    expect(s.completed).toBe(2);
-    expect(s.completionRate).toBeCloseTo(2 / 3);
-  });
-  it('per-item medians exclude zero guesses and report n', () => {
-    const x = s.items.find((i) => i.item_id === 'x')!;
-    expect(x.n).toBe(3);
-    expect(x.excluded).toBe(1);
-    expect(x.median).toBeCloseTo((Math.log(0.5) + Math.log(2)) / 2);
-    expect(s.items.map((i) => i.item_id)).toEqual(['y', 'x']);
-  });
-  it('direction shares sum to 1 and count zero guesses as under', () => {
-    const x = s.items.find((i) => i.item_id === 'x')!;
-    expect(x.under).toBeCloseTo(2 / 3);
-    expect(x.over).toBeCloseTo(1 / 3);
-    const y = s.items.find((i) => i.item_id === 'y')!;
-    expect(y.under + y.over + y.exact).toBeCloseTo(1);
-    expect(y.exact).toBeCloseTo(0.5);
-  });
-  it('category medians', () => {
-    expect(s.categories.find((c) => c.category === 'credit_debt')!.median).toBeCloseTo(Math.log(4) / 2);
-  });
-  it('flags low-n chapters', () => {
-    expect(s.perChapter.every((c) => c.lowN)).toBe(true);
+  it('share per code and share correct', () => {
+    const rc = recodeMap([]);
+    expect(codeShares(rows, rc).map((c) => [c.code, c.n])).toEqual([['CORR', 1], ['PAD', 1], ['UNK', 1]]);
+    expect(shareCorrect(rows, rc)).toBeCloseTo(1 / 3);
   });
 });
 
-describe('applyFilters', () => {
-  it('filters by chapter and date range', () => {
-    expect(applyFilters(data(), { chapter: 'BBB' }).responses).toHaveLength(2);
-    expect(applyFilters(data(), { from: '2026-09-05' }).responses).toHaveLength(2);
-    expect(applyFilters(data(), { to: '2026-09-05' }).attempts).toHaveLength(2);
+describe('ratings', () => {
+  it('pairs gut and post per student', () => {
+    const d = dataset([resp(answer(a, 'F2', 'gut', 5)), resp(answer(a, 'F2', 'post', 2)), resp(answer(b, 'F2', 'gut', 4))], [a, b]);
+    expect(ratingPairs(d, 'F2', 'gut', 'post')).toEqual([{ student: 'AAA222', gut: 5, post: 2 }]);
+  });
+});
+
+describe('consistency checks', () => {
+  it('shade vs typed mismatch beyond 1% of the whole', () => {
+    const ok = resp(answer(a, 'S1', 's2', 4.8, [], { value: { fraction: 0.1 } }));
+    const off = resp(answer(b, 'S1', 's2', 4.8, [], { value: { fraction: 0.25 } }));
+    expect(shadeMismatch([ok, off], 48).map((r) => r.student_code)).toEqual(['BBB333']);
+  });
+  it('receipt total ≠ base + their own tax', () => {
+    const d = dataset(
+      [resp(answer(a, 'S2', 's3', 5.8)), resp(answer(a, 'S2', 's4', 85.8)), resp(answer(b, 'S2', 's3', 7.25)), resp(answer(b, 'S2', 's4', 85.8))],
+      [a, b],
+    );
+    const r = receiptMismatch(d, 'S2', 80, 's3', 's4');
+    expect(r.checked).toBe(2);
+    expect(r.mismatched.map((x) => x.student_code)).toEqual(['BBB333']);
+  });
+});
+
+describe('top bar & quality flags', () => {
+  it('flags straight-lined ratings, identical answers and fast finishers', () => {
+    const rows = [
+      ...['g1', 'p1', 'g2', 'p2'].map((sid) => resp(answer(a, 'F2', sid.startsWith('g') ? 'gut' : 'post', 5, [], { item_id: sid.endsWith('1') ? 'F2' : 'F3' }))),
+      ...['x1', 'x2', 'x3', 'x4', 'x5'].map((sid) => resp(answer(b, 'S1', sid, 10))),
+    ];
+    const d = dataset(rows, [a, b]);
+    d.students[0].finished_at = '2026-09-01T10:02:00.000Z';
+    const f = qualityFlags(d);
+    expect(f.straightLined).toEqual(['AAA222']);
+    expect(f.identical).toEqual(['BBB333']);
+    expect(f.tooFast).toEqual(['AAA222']);
+    const t = topBar(d, recodeMap([]));
+    expect(t.started).toBe(2);
+    expect(t.finished).toBe(1);
+    expect(t.medianMinutes).toBeCloseTo(2);
+    expect(t.methods[0]).toMatchObject({ key: 'typed', n: 9 });
+  });
+});
+
+describe('histogram & beeswarm', () => {
+  it('bins linear and log', () => {
+    expect(histogram([1, 2, 3, 9], 0, 10, 2).map((b) => b.n)).toEqual([3, 1]);
+    expect(histogram([1, 9, 100], 1, 100, 2, true).map((b) => b.n)).toEqual([2, 1]);
+  });
+  it('beeswarm never overlaps dots', () => {
+    const xs = Array.from({ length: 80 }, (_, i) => 100 + (i % 7) * 3);
+    const ys = beeswarm(xs, 5);
+    for (let i = 0; i < xs.length; i++)
+      for (let j = i + 1; j < xs.length; j++) expect(Math.hypot(xs[i] - xs[j], ys[i] - ys[j])).toBeGreaterThanOrEqual(10.9);
   });
 });

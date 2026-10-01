@@ -1,5 +1,16 @@
 # BFFA Money Check
 
+> **Rebuild in progress: questionnaire v3, Stage 1 of 4.** The app is being rebuilt to the *Interaction and Admin Visual
+> Spec*. Done so far:
+> - multi-step problems, with no feedback and answers locked on confirm;
+> - inputs C1/C3/C7;
+> - anonymous student codes;
+> - per-step instrumentation and auto strategy codes;
+> - the gap dashboard, with per-item charts for S1, S2 and F2 (wording is DRAFT);
+> - migration `0003_questionnaire.sql`.
+>
+> Some sections below still describe the earlier single-estimate version and get rewritten in Stage 4.
+
 A financial-literacy diagnostic for grades 6–8, run once at the start of BFF of America chapter workshops.
 Every question is a realistic money scenario, and the student types a **numeric estimate** (no multiple choice).
 The size and direction of the gap between the estimate and the true value

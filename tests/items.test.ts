@@ -1,79 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_ITEMS, explanationOf, getItems, promptOf, truthOf } from '../src/items';
-import compound from '../src/items/samples/compoundGrowth';
-import loan, { totalPaid } from '../src/items/samples/loanInterest';
-import budget from '../src/items/samples/budget';
-import { validateItems } from '../src/items/validate';
-import { defineItem } from '../src/items/types';
-import { renderTemplate } from '../src/lib/format';
+import { ALL_PROBLEMS, correctOf, estimateMinutes, getProblem, problemsFor } from '../src/items';
+import { validateProblems } from '../src/items/validate';
+import { classify } from '../src/lib/classify';
+import type { Problem } from '../src/items/types';
+
+const step = (p: string, s: string) => getProblem(p)!.steps.find((x) => x.id === s)!;
 
 describe('item bank', () => {
-  it('every item passes validation (run this after importing the real bank)', () => {
-    expect(validateItems(ALL_ITEMS)).toEqual([]);
+  it('passes the validator (run after every bank edit)', () => {
+    expect(validateProblems(ALL_PROBLEMS)).toEqual([]);
   });
-  it('renders every prompt and explanation with no unfilled placeholders', () => {
-    for (const it of ALL_ITEMS) {
-      expect(promptOf(it)).not.toMatch(/\{\w+/);
-      expect(explanationOf(it)).not.toMatch(/\{\w+/);
-    }
+  it('every problem is marked DRAFT until the author reviews it', () => {
+    expect(ALL_PROBLEMS.every((p) => p.draft)).toBe(true);
   });
-  it('getItems returns active items in order', () => {
-    expect(getItems().map((i) => i.order)).toEqual([1, 2, 3]);
+  it('modules filter', () => {
+    expect(problemsFor(['feasibility']).map((p) => p.id)).toEqual(['F2']);
+    expect(estimateMinutes(problemsFor(['skill', 'feasibility']))).toBeGreaterThan(3);
   });
 });
 
-describe('sample truth functions (hand-computed)', () => {
-  it('compound growth: 1000 × 1.07^20 = 3869.68', () => {
-    expect(truthOf(compound)).toBeCloseTo(3869.68, 2);
+describe('reference values from the spec', () => {
+  it('S1 hoodie: $36, PAD $23, HALF $24, DEC $47.75', () => {
+    expect(correctOf(step('S1', 's1'))).toBe(36);
+    expect(48 * 0.75).toBe(36);
+    expect(classify(step('S1', 's1'), 23)).toEqual(['PAD']);
+    expect(classify(step('S1', 's1'), 24)).toEqual(['HALF']);
+    expect(classify(step('S1', 's1'), 47.75)).toEqual(['DEC']);
+    expect(correctOf(step('S1', 's3'))).toBeCloseTo(48 * 0.25);
   });
-  it('budget: (12×15 − 60) × 10 = 1200', () => {
-    expect(truthOf(budget)).toBe(1200);
+  it('S2 headphones: $80 at 7.25% = $85.80; tax-neglected $80; percent-as-dollars $87.25', () => {
+    expect(correctOf(step('S2', 's4'))).toBeCloseTo(80 * 1.0725, 2);
+    expect(correctOf(step('S2', 's3'))).toBeCloseTo(80 * 0.0725, 2);
+    expect(classify(step('S2', 's1'), 80)).toEqual(['NOTAX']);
+    expect(classify(step('S2', 's1'), 87.25)).toEqual(['PAD']);
   });
-  it('loan: zero interest means you pay exactly the price', () => {
-    expect(totalPaid(800, 0, 40)).toBeCloseTo(800, 6);
-  });
-  it('loan: one-month payoff adds one month of interest', () => {
-    expect(totalPaid(100, 12, 1000)).toBeCloseTo(101, 6);
-  });
-  it('loan: $800 at 24% APR, $40/mo ≈ $1,032 (26 payments)', () => {
-    const t = truthOf(loan);
-    expect(t).toBeGreaterThan(1030);
-    expect(t).toBeLessThan(1035);
-  });
-});
-
-describe('validator catches bad items', () => {
-  const base = defineItem({
-    id: 'ok-item',
-    title: 'OK',
-    version: 1,
-    active: true,
-    deca_category: 'investing',
-    unit: 'usd',
-    prompt_template: 'Spend {x:usd}?',
-    variables: { x: 5 },
-    truth: ({ x }) => x,
-    explanation: 'It is {truth:usd}.',
-  });
-  it('accepts a good item', () => expect(validateItems([base])).toEqual([]));
-  it('flags missing variables, bad truth, bad category, duplicate ids', () => {
-    const bad = [
-      { ...base, prompt_template: 'Spend {y}?' },
-      { ...base, id: 'neg', truth: () => -1 },
-      { ...base, id: 'cat', deca_category: 'nope' as never },
-      { ...base, id: 'leak', prompt_template: 'It is {truth}' },
-    ];
-    const problems = validateItems(bad).join('\n');
-    expect(problems).toMatch(/\{y\}/);
-    expect(problems).toMatch(/\[neg\] truth/);
-    expect(problems).toMatch(/\[cat\] unknown deca_category/);
-    expect(problems).toMatch(/\[leak\] prompt must not reveal/);
-    expect(validateItems([base, base]).join()).toMatch(/duplicate id/);
+  it('F2: 100× in 12 months = 46.8%/month; linear ≈ 8.3%', () => {
+    expect(correctOf(step('F2', 's3'))).toBeCloseTo((100 ** (1 / 12) - 1) * 100, 1);
+    expect(classify(step('F2', 's3'), 8)).toEqual(['LIN']);
+    expect(classify(step('F2', 's3'), 47)).toEqual(['CORR']);
+    expect(correctOf(step('F2', 's2'))).toBe(50000 / 500);
   });
 });
 
-describe('renderTemplate', () => {
-  it('formats placeholders', () => {
-    expect(renderTemplate('{a:usd} at {r:pct} for {n}', { a: 1500, r: 6.5, n: 3 })).toBe('$1,500 at 6.5% for 3');
+describe('validator catches bad problems', () => {
+  const base = getProblem('S1')!;
+  const bad = (patch: Partial<Problem>) => validateProblems([{ ...base, ...patch }]).join('\n');
+  it('flags a code overlapping the correct value', () => {
+    expect(bad({ steps: [{ ...base.steps[0], codes: [{ code: 'PAD', value: 36.1 }] }] })).toMatch(/overlaps the correct value/);
+  });
+  it('flags a correct value at the edge or centre of the axis (anchoring)', () => {
+    expect(bad({ steps: [{ ...base.steps[0], input: { type: 'numberLine', min: 0, max: 37, scale: 'linear', unit: 'usd' } }] })).toMatch(/edge/);
+    expect(bad({ steps: [{ ...base.steps[0], input: { type: 'numberLine', min: 0, max: 72, scale: 'linear', unit: 'usd' } }] })).toMatch(/centre/);
+  });
+  it('flags admin charts pointing at missing steps and order cycles', () => {
+    expect(bad({ admin: [{ type: 'dots', step: 'nope', title: 't' }] })).toMatch(/unknown step nope/);
+    const a = { ...base, id: 'S1', order: { before: ['S2'] } };
+    const b = { ...getProblem('S2')!, order: { before: ['S1'] } };
+    expect(validateProblems([a, b]).join()).toMatch(/cycle/);
   });
 });

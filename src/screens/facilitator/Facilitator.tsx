@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { CheckCheck, ListChecks, Play, Users } from 'lucide-react';
 import { api } from '../../api';
 import { ApiError, CHAPTER_CODE, normalizeChapter, type OpenSession, type SessionStats, type SessionStatus } from '../../api/types';
+import { estimateMinutes, problemsFor } from '../../items';
+import { MODULE_LABELS, type Module } from '../../items/types';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { FieldError } from '../../components/FieldError';
@@ -46,6 +49,8 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
   });
   const [open, setOpen] = useState<OpenSession[] | null>(null);
   const [code, setCode] = useState('');
+  const [modules, setModules] = useState<Module[]>(['skill', 'feasibility', 'hybrid']);
+  const [cohort, setCohort] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -75,7 +80,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const sess = await api.createSession(pass, c);
+      const sess = await api.createSession(pass, c, modules, cohort);
       activate({ id: sess.id, chapter: sess.chapter_code });
     } catch (err) {
       setError(errText(err));
@@ -109,8 +114,30 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                     hint="Use your chapter’s code. One open session per chapter."
                     autoComplete="off"
                   />
+                  <Input label="Group label (optional)" value={cohort} maxLength={60} onChange={(e) => setCohort(e.target.value)} placeholder="Grade 7 · Tuesday" hint="Helps you find this workshop later. No student names." />
+                  <fieldset className={s.modules}>
+                    <legend className="eyebrow">Modules</legend>
+                    {(Object.keys(MODULE_LABELS) as Module[]).map((m) => {
+                      const n = problemsFor([m]).length;
+                      return (
+                        <label key={m} className={s.moduleRow}>
+                          <input
+                            type="checkbox"
+                            checked={modules.includes(m)}
+                            onChange={(e) => setModules(e.target.checked ? [...modules, m] : modules.filter((x) => x !== m))}
+                          />
+                          <span>
+                            {MODULE_LABELS[m]} <span className={s.muted}>· {n} {n === 1 ? 'problem' : 'problems'} available</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                    <p className={`${s.muted} num`}>
+                      About {estimateMinutes(problemsFor(modules))} minutes per student. Students can stop and resume with their code.
+                    </p>
+                  </fieldset>
                   {error && <FieldError>{error}</FieldError>}
-                  <Button type="submit" size="lg" block disabled={busy || code.length < 3}>
+                  <Button type="submit" size="lg" block disabled={busy || code.length < 3 || modules.length === 0}>
                     {busy ? 'Starting…' : 'Start session'}
                   </Button>
                 </form>
@@ -129,7 +156,8 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                           <div>
                             <div className={s.code}>{o.chapter_code}</div>
                             <div className={`${s.muted} num`}>
-                              {o.attempts} started · {o.completed} finished
+                              {o.cohort_label ? `${o.cohort_label} · ` : ''}
+                              {o.students} started · {o.finished} finished
                             </div>
                           </div>
                           <Button size="sm" variant="secondary" onClick={() => activate({ id: o.id, chapter: o.chapter_code })}>
@@ -214,8 +242,8 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
       </div>
 
       <div className={s.tiles}>
-        <StatTile label="Started" value={stats?.attempts ?? 0} icon={Users} tone="soft" />
-        <StatTile label="Finished" value={stats?.completed ?? 0} icon={CheckCheck} tone="mint" highlight={!!stats && stats.completed > 0} />
+        <StatTile label="Started" value={stats?.students ?? 0} icon={Users} tone="soft" />
+        <StatTile label="Finished" value={stats?.finished ?? 0} icon={CheckCheck} tone="mint" highlight={!!stats && stats.finished > 0} />
         <StatTile label="Answers" value={stats?.responses ?? 0} icon={ListChecks} tone="gold" />
       </div>
       {error && <FieldError>{error}</FieldError>}
@@ -236,6 +264,9 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
             Back to sessions
           </Button>
         )}
+        <Link className={s.liveLink} to={`/analysis?session=${id}`}>
+          Open live dashboard →
+        </Link>
       </div>
     </div>
   );

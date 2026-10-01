@@ -7,7 +7,7 @@ import { browserKV } from './storage';
 const kv = browserKV();
 
 /** App-wide answer queue backed by localStorage. */
-export const queue = new SyncQueue(kv, (attempts, answers) => api.sync(getDeviceToken(kv), attempts, answers));
+export const queue = new SyncQueue(kv, (students, answers) => api.sync(getDeviceToken(kv), students, answers));
 
 let timer: ReturnType<typeof setTimeout> | undefined;
 let started = false;

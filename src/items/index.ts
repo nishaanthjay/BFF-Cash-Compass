@@ -1,55 +1,37 @@
-import type { Item, Variables } from './types';
-import { renderTemplate } from '../lib/format';
+import type { Module, Problem, Prior, Step } from './types';
 
-type ItemModule = { default: Item | Item[] };
+type Mod = { default: Problem };
 
-function collect(mods: Record<string, ItemModule>): Item[] {
-  return Object.keys(mods)
-    .sort()
-    .flatMap((k) => {
-      const d = mods[k].default;
-      return Array.isArray(d) ? d : [d];
-    });
+/** Every file in ./bank is picked up automatically (one problem per file). */
+const modules = import.meta.glob<Mod>('./bank/*.ts', { eager: true });
+export const ALL_PROBLEMS: Problem[] = Object.keys(modules)
+  .sort()
+  .map((k) => modules[k].default);
+
+const byId = new Map(ALL_PROBLEMS.map((p) => [p.id, p]));
+
+export function getProblem(id: string): Problem | undefined {
+  return byId.get(id);
 }
 
-/**
- * The real question bank: every file in ./bank is picked up automatically.
- * Each file default-exports an Item (via defineItem) or an Item[].
- */
-const bankItems = collect(import.meta.glob<ItemModule>('./bank/*.ts', { eager: true }));
-const sampleItems = collect(import.meta.glob<ItemModule>('./samples/*.ts', { eager: true }));
-
-/** SAMPLE items are used only while the bank is empty. */
-export const ALL_ITEMS: Item[] = bankItems.length > 0 ? bankItems : sampleItems;
-export const USING_SAMPLES = bankItems.length === 0;
-
-/** Active items in display order: what every student sees. */
-export function getItems(items: Item[] = ALL_ITEMS): Item[] {
-  return items
-    .map((it, i) => ({ it, i }))
-    .filter(({ it }) => it.active)
-    .sort((a, b) => (a.it.order ?? Infinity) - (b.it.order ?? Infinity) || a.i - b.i)
-    .map(({ it }) => it);
+export function problemsFor(modules: Module[]): Problem[] {
+  return ALL_PROBLEMS.filter((p) => p.active && modules.includes(p.module));
 }
 
-export function getItem(id: string, items: Item[] = ALL_ITEMS): Item | undefined {
-  return items.find((it) => it.id === id);
+export function getStep(problemId: string, stepId: string): Step | undefined {
+  return byId.get(problemId)?.steps.find((s) => s.id === stepId);
 }
 
-export function truthOf(item: Item): number {
-  return item.truth(item.variables);
+/** Correct value for a step given the student's earlier answers on the same problem. */
+export function correctOf(step: Step, prior: Prior = {}): number | null {
+  if (step.correct === undefined) return null;
+  return typeof step.correct === 'function' ? step.correct(prior) : step.correct;
 }
 
-function templateValues(item: Item): Variables {
-  return { ...item.variables, ...(item.derived?.(item.variables) ?? {}), truth: truthOf(item) };
+/** Minutes estimate for the facilitator (≈25 s per numeric step, 12 s per rating/choice). */
+export function estimateMinutes(problems: Problem[]): number {
+  const secs = problems.flatMap((p) => p.steps).reduce((a, s) => a + (s.input.type === 'dial' || s.input.type === 'choice' ? 12 : s.input.type === 'text' ? 40 : 25), 0);
+  return Math.max(1, Math.round(secs / 60));
 }
 
-export function promptOf(item: Item): string {
-  return renderTemplate(item.prompt_template, templateValues(item));
-}
-
-export function explanationOf(item: Item): string {
-  return renderTemplate(item.explanation, templateValues(item));
-}
-
-export type { Item } from './types';
+export type { Problem, Step } from './types';

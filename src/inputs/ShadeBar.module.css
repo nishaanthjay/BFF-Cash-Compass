@@ -1,0 +1,64 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.bar {
+  position: relative;
+  height: 64px;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  overflow: hidden;
+  touch-action: none;
+  cursor: pointer;
+}
+.bar:focus-visible {
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: var(--shadow-focus);
+}
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: repeating-linear-gradient(45deg, var(--color-primary) 0 8px, var(--color-primary-deep) 8px 12px);
+  border-right: var(--border-width) solid var(--color-foreground);
+}
+.grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  pointer-events: none;
+}
+.grid span {
+  border-right: 1px dashed var(--color-input);
+}
+.grid span:last-child {
+  border-right: 0;
+}
+.empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+}
+.readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.readNum {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-2xl);
+}
+.scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}

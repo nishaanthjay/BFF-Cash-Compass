@@ -4,9 +4,9 @@
  */
 export const RATE = {
   /** Max answers a device may submit in any rolling window. */
-  answersPerWindow: 30,
+  answersPerWindow: 60,
   windowMs: 60_000,
-  /** Max run-throughs (attempts) a device may start in one session. */
+  /** Max student codes a device may start in one session. */
   attemptsPerSession: 3,
 } as const;
 

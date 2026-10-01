@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Clock, Coins, ShieldCheck, Target } from 'lucide-react';
+import { Clock, KeyRound, ShieldCheck, Target } from 'lucide-react';
 import { api } from '../../api';
-import { ApiError, CHAPTER_CODE, normalizeChapter } from '../../api/types';
+import { ApiError, CHAPTER_CODE, normalizeChapter, type JoinedSession } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { FieldError } from '../../components/FieldError';
@@ -11,11 +11,13 @@ import { IconBadge } from '../../components/IconBadge';
 import { Input } from '../../components/Input';
 import { Screen } from '../../components/Screen';
 import { StudentShell } from '../../components/StudentShell';
-import { getItems, truthOf } from '../../items';
+import { estimateMinutes, problemsFor } from '../../items';
 import { clearRun, loadRun, saveRun } from '../../lib/run';
 import { browserKV } from '../../lib/storage';
+import { formatCode, isStudentCode, newStudentCode, normalizeStudentCode } from '../../lib/studentCode';
 import { queue, syncNow, useOnline } from '../../lib/sync';
-import { uuid } from '../../lib/uuid';
+import { deviceType } from '../../lib/telemetry';
+import { makeRun } from './session';
 import s from './Join.module.css';
 
 const kv = browserKV();
@@ -41,48 +43,59 @@ export function Join() {
   const [code, setCode] = useState(normalizeChapter(params.get('c') ?? ''));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [joined, setJoined] = useState<JoinedSession | null>(null);
+  const [newCode] = useState(() => newStudentCode());
+  const [haveCode, setHaveCode] = useState(false);
+  const [oldCode, setOldCode] = useState('');
   const [existing, setExisting] = useState(() => {
     const r = loadRun(kv);
-    return r && r.phase !== 'done' ? r : null;
+    return r && !r.done ? r : null;
   });
-  const count = getItems().length;
-  const minutes = Math.max(3, Math.round(count * 0.9));
 
-  async function start(e: FormEvent) {
+  async function findSession(e: FormEvent) {
     e.preventDefault();
     const c = normalizeChapter(code);
-    if (!CHAPTER_CODE.test(c)) {
-      setError('Chapter codes are 3 to 10 letters or numbers, like TX014.');
-      return;
-    }
+    if (!CHAPTER_CODE.test(c)) return setError('Chapter codes are 3 to 10 letters or numbers, like TX014.');
     setBusy(true);
     setError(null);
     try {
-      const joined = await api.joinSession(c);
-      const items = getItems();
-      const run = {
-        session_id: joined.session_id,
-        chapter_code: joined.chapter_code,
-        attempt_id: uuid(),
-        item_ids: items.map((i) => i.id),
-        answers: {},
-        phase: 'items' as const,
-        index: 0,
-        revealIndex: 0,
-        started_at: new Date().toISOString(),
-      };
-      saveRun(kv, run);
-      queue.addAttempt({ attempt_id: run.attempt_id, session_id: run.session_id, item_count: items.length, started_at: run.started_at });
-      void syncNow();
-      // Warm the truth functions once so the first reveal never stalls.
-      items.forEach(truthOf);
-      navigate('/run');
+      setJoined(await api.joinSession(c));
     } catch (err) {
       setError(messageFor(err));
     } finally {
       setBusy(false);
     }
   }
+
+  async function begin(studentCode: string, resume: boolean) {
+    if (!joined) return;
+    setBusy(true);
+    setError(null);
+    try {
+      let locked: string[] = [];
+      if (resume) {
+        const r = await api.resumeStudent(joined.session_id, studentCode);
+        if (!r) {
+          setBusy(false);
+          return setError('We couldn’t find that code in this session. Check it, or start with a new code.');
+        }
+        locked = r.locked;
+      }
+      const run = makeRun(joined, studentCode, locked);
+      saveRun(kv, run);
+      if (!resume) {
+        const expected = problemsFor(joined.modules).reduce((a, p) => a + p.steps.length, 0);
+        queue.addStudent({ student_code: studentCode, session_id: joined.session_id, forms: run.forms, device_type: deviceType(), expected_steps: expected, started_at: run.started_at });
+        void syncNow();
+      }
+      navigate('/run');
+    } catch (err) {
+      setError(messageFor(err));
+      setBusy(false);
+    }
+  }
+
+  const minutes = joined ? estimateMinutes(problemsFor(joined.modules)) : null;
 
   return (
     <StudentShell decor="landing" wiggle>
@@ -91,16 +104,15 @@ export function Join() {
           <h1 className={s.title}>
             How good is your <mark>money sense?</mark>
           </h1>
-          <p className={s.lede}>Guess real-life money numbers, then see how close you got.</p>
+          <p className={s.lede}>Real-life money questions. Type or tap your best estimate. There are no grades.</p>
         </div>
 
         <div className={s.stack}>
-          {existing && (
+          {existing && !joined && (
             <Card tone="mint" className={s.resume}>
               <h2 className={s.h2}>Welcome back!</h2>
               <p>
-                You were on question {Math.min(existing.index + 1, existing.item_ids.length)} of {existing.item_ids.length} for chapter{' '}
-                <strong className="num">{existing.chapter_code}</strong>.
+                Your code is <strong className="num">{formatCode(existing.student_code)}</strong>. Pick up where you left off.
               </p>
               <div className={s.row}>
                 <Button onClick={() => navigate('/run')}>Keep going</Button>
@@ -117,45 +129,80 @@ export function Join() {
             </Card>
           )}
 
-          <Card as="section" tone="featured" aria-labelledby="join-h">
-            <form className={s.form} onSubmit={start} noValidate>
-              <h2 id="join-h" className={s.h2}>
-                Join your workshop
-              </h2>
-              <Input
-                label="Chapter code"
-                code
-                value={code}
-                onChange={(e) => setCode(normalizeChapter(e.target.value).slice(0, 10))}
-                placeholder="TX014"
-                autoComplete="off"
-                autoCapitalize="characters"
-                spellCheck={false}
-                hint="It’s on the screen at the front of the room, or scan the QR code."
-              />
-              {error && <FieldError>{error}</FieldError>}
-              {!online && <FieldError>You’re offline. Connect to wifi to join.</FieldError>}
-              <Button type="submit" size="lg" block disabled={busy || code.length < 3}>
-                {busy ? 'Finding your session…' : 'Let’s go'}
-              </Button>
-            </form>
-          </Card>
+          {!joined ? (
+            <Card as="section" tone="featured" aria-labelledby="join-h">
+              <form className={s.form} onSubmit={findSession} noValidate>
+                <h2 id="join-h" className={s.h2}>
+                  Join your workshop
+                </h2>
+                <Input
+                  label="Chapter code"
+                  code
+                  value={code}
+                  onChange={(e) => setCode(normalizeChapter(e.target.value).slice(0, 10))}
+                  placeholder="TX014"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  hint="It’s on the screen at the front of the room, or scan the QR code."
+                />
+                {error && <FieldError>{error}</FieldError>}
+                {!online && <FieldError>You’re offline. Connect to wifi to join.</FieldError>}
+                <Button type="submit" size="lg" block disabled={busy || code.length < 3}>
+                  {busy ? 'Finding your session…' : 'Next'}
+                </Button>
+              </form>
+            </Card>
+          ) : (
+            <Card as="section" tone="featured" aria-labelledby="code-h" className={s.form}>
+              <div className={s.row}>
+                <IconBadge icon={KeyRound} tone="gold" />
+                <h2 id="code-h" className={s.h2}>
+                  {haveCode ? 'Enter your code' : 'Your private code'}
+                </h2>
+              </div>
+              {!haveCode ? (
+                <>
+                  <p className={s.bigCode} aria-label={`Your code is ${newCode.split('').join(' ')}`}>
+                    {formatCode(newCode)}
+                  </p>
+                  <p>Write this down. If you need to finish later, you’ll use it to come back. It isn’t linked to your name.</p>
+                  {error && <FieldError>{error}</FieldError>}
+                  <Button size="lg" block disabled={busy} onClick={() => void begin(newCode, false)}>
+                    I wrote it down, start
+                  </Button>
+                  <Button variant="ghost" block onClick={() => setHaveCode(true)}>
+                    I already have a code
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Input label="Your code" code value={oldCode} onChange={(e) => setOldCode(normalizeStudentCode(e.target.value))} placeholder="ABC-123" autoComplete="off" />
+                  {error && <FieldError>{error}</FieldError>}
+                  <Button size="lg" block disabled={busy || !isStudentCode(oldCode)} onClick={() => void begin(oldCode, true)}>
+                    Continue
+                  </Button>
+                  <Button variant="ghost" block onClick={() => setHaveCode(false)}>
+                    Use a new code instead
+                  </Button>
+                </>
+              )}
+            </Card>
+          )}
 
           <Card as="section" aria-label="How it works" tight>
             <ul className={s.steps}>
               <li>
                 <IconBadge icon={Target} tone="gold" size="sm" />
-                <span>Type your best estimate. No calculator needed.</span>
+                <span>One question at a time. Your best estimate is perfect.</span>
               </li>
               <li>
                 <IconBadge icon={Clock} tone="soft" size="sm" />
-                <span className="num">
-                  {count} questions, about {minutes} minutes.
-                </span>
+                <span className="num">{minutes ? `About ${minutes} minutes. No timer.` : 'No timer, no points.'}</span>
               </li>
               <li>
-                <IconBadge icon={Coins} tone="pink" size="sm" />
-                <span>See the real numbers at the end.</span>
+                <IconBadge icon={KeyRound} tone="pink" size="sm" />
+                <span>Answers lock when you tap “Lock answer.” You can’t go back.</span>
               </li>
             </ul>
           </Card>
@@ -165,8 +212,8 @@ export function Join() {
             <div>
               <h2 id="privacy-h">Your privacy</h2>
               <p className={s.small}>
-                We never ask for your name, email, school or student ID. We only save your chapter code, the numbers you type, and the time
-                you answered.
+                We never ask for your name, email, school or student ID. We save your chapter code, a random code, your answers, how you entered
+                them, and the time.
               </p>
             </div>
           </Card>

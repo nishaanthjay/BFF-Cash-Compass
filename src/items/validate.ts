@@ -1,40 +1,67 @@
-import { DECA_CATEGORIES, type Item } from './types';
-import { templateVars } from '../lib/format';
+import { CODES } from './families';
+import { DECA_CATEGORIES, type Problem } from './types';
+import { correctOf } from './index';
+import { within } from '../lib/classify';
 
-/** Returns a list of human-readable problems. Empty list = bank is valid. */
-export function validateItems(items: Item[]): string[] {
-  const problems: string[] = [];
+/** Returns human-readable problems; [] = bank is valid. Run via `npm test`. */
+export function validateProblems(problems: Problem[]): string[] {
+  const out: string[] = [];
   const ids = new Set<string>();
+  const all = new Set(problems.map((p) => p.id));
 
-  for (const it of items) {
-    const where = `[${it.id}]`;
-    if (!it.id) problems.push(`item with empty id`);
-    if (ids.has(it.id)) problems.push(`${where} duplicate id`);
-    ids.add(it.id);
-    if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(it.id ?? '')) problems.push(`${where} id must be lowercase letters, digits and dashes`);
-    if (!it.title) problems.push(`${where} missing title`);
-    if (!DECA_CATEGORIES.includes(it.deca_category)) problems.push(`${where} unknown deca_category "${it.deca_category}"`);
-    if (!Number.isInteger(it.version) || it.version < 1) problems.push(`${where} version must be a positive integer`);
+  for (const p of problems) {
+    const at = `[${p.id}]`;
+    if (!/^[SFH]\d{1,2}$/.test(p.id)) out.push(`${at} id must look like S1, F2, H1`);
+    if (ids.has(p.id)) out.push(`${at} duplicate id`);
+    ids.add(p.id);
+    if (!DECA_CATEGORIES.includes(p.deca_category)) out.push(`${at} unknown deca_category`);
+    if (!p.steps.length) out.push(`${at} has no steps`);
+    for (const ref of [...(p.order?.before ?? []), ...(p.order?.notAdjacent ?? [])]) if (!all.has(ref)) out.push(`${at} order rule references unknown ${ref}`);
 
-    const values = { ...it.variables, ...(it.derived?.(it.variables) ?? {}), truth: 1 };
-    for (const name of templateVars(it.prompt_template)) {
-      if (name === 'truth') problems.push(`${where} prompt must not reveal {truth}`);
-      else if (!(name in values)) problems.push(`${where} prompt uses {${name}} but no value is defined`);
+    const stepIds = new Set<string>();
+    for (const s of p.steps) {
+      const st = `${at}.${s.id}`;
+      if (stepIds.has(s.id)) out.push(`${st} duplicate step id`);
+      stepIds.add(s.id);
+      if (!s.prompt.trim()) out.push(`${st} empty prompt`);
+      for (const c of s.codes ?? []) {
+        if (!(c.code in CODES)) out.push(`${st} unknown code ${c.code}`);
+        if (!Number.isFinite(c.value)) out.push(`${st} code ${c.code} has no numeric value`);
+      }
+      const truth = typeof s.correct === 'number' ? correctOf(s) : null;
+      if (truth !== null) {
+        for (const c of s.codes ?? []) if (within(c.value, truth, Math.max(c.tolPct ?? 1, s.correctTolPct ?? 1))) out.push(`${st} code ${c.code} (${c.value}) overlaps the correct value`);
+        if (s.input.type === 'numberLine') {
+          const { min, max, scale } = s.input;
+          const pos = scale === 'log' ? (Math.log(truth) - Math.log(min)) / (Math.log(max) - Math.log(min)) : (truth - min) / (max - min);
+          if (pos < 0.05 || pos > 0.95) out.push(`${st} correct value sits at the edge of the axis (${(pos * 100).toFixed(0)}%)`);
+          if (Math.abs(pos - 0.5) < 0.03) out.push(`${st} correct value sits at the centre of the axis`);
+          if (scale === 'log' && min <= 0) out.push(`${st} log axis needs min > 0`);
+        }
+      }
+      if (s.correctChoice && s.input.type === 'choice') for (const c of s.correctChoice) if (!s.input.options.some((o) => o.id === c)) out.push(`${st} correctChoice ${c} is not an option`);
     }
-    for (const name of templateVars(it.explanation)) {
-      if (!(name in values)) problems.push(`${where} explanation uses {${name}} but no value is defined`);
+    for (const c of p.admin) {
+      const refs = 'step' in c ? [c.step] : 'steps' in c ? c.steps : 'gut' in c ? [c.gut, c.post] : [];
+      for (const r of refs) if (!stepIds.has(r)) out.push(`${at} admin chart "${c.title}" references unknown step ${r}`);
     }
-
-    let t: number;
-    try {
-      t = it.truth(it.variables);
-    } catch (e) {
-      problems.push(`${where} truth() threw: ${(e as Error).message}`);
-      continue;
-    }
-    if (!Number.isFinite(t) || t <= 0) problems.push(`${where} truth() must be a finite number > 0 (got ${t})`);
   }
-
-  if (!items.some((i) => i.active)) problems.push('no active items');
-  return problems;
+  // before-cycles
+  const edges = new Map(problems.map((p) => [p.id, (p.order?.before ?? []).filter((b) => all.has(b))]));
+  const seen = new Set<string>();
+  const stack = new Set<string>();
+  const visit = (id: string): boolean => {
+    if (stack.has(id)) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    stack.add(id);
+    const cyc = (edges.get(id) ?? []).some(visit);
+    stack.delete(id);
+    return cyc;
+  };
+  for (const id of all) if (visit(id)) {
+    out.push(`order rules contain a cycle involving ${id}`);
+    break;
+  }
+  return out;
 }

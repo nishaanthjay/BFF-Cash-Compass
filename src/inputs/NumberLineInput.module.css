@@ -1,0 +1,43 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.lineBox {
+  position: relative;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  padding: var(--space-2) var(--space-2) 0;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+.lineBox:focus-visible {
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: var(--shadow-focus);
+}
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.tickLabel {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+}
+.bubble {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-variant-numeric: tabular-nums;
+}
+.scaleNote {
+  color: var(--color-muted-foreground);
+}

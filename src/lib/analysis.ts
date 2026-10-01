@@ -1,112 +1,170 @@
-import type { ExportData, ExportFilters, ResponseRow } from '../api/types';
-import { DECA_CATEGORIES, type DecaCategory } from '../items/types';
-import { direction, logError, median } from './logError';
+import type { ExportData, ExportFilters, Recode, ResponseRow } from '../api/types';
+import type { Code } from '../items/families';
+import { median } from './logError';
 
-/** Chapters with fewer responses than this get a low-n warning. */
-export const LOW_N = 10;
+/** Cells with fewer students than this are hidden in projector mode. */
+export const MIN_CELL = 5;
+/** Per-workshop distributions switch from dots to a histogram above this n (pooled views). */
+export const HISTOGRAM_N = 60;
+export const FAST_FINISH_MS = 3 * 60_000;
 
-export interface ItemStat {
-  item_id: string;
-  n: number;
-  /** Responses with estimate ≤ 0 (no defined log error), excluded from medians. */
-  excluded: number;
-  median: number | null;
-  under: number;
-  over: number;
-  exact: number;
+export type RecodeMap = Map<string, Recode>;
+
+export function recodeMap(recodes: Recode[]): RecodeMap {
+  return new Map(recodes.map((r) => [r.answer_id, r]));
 }
 
-export interface CategoryStat {
-  category: DecaCategory;
-  n: number;
-  median: number | null;
-}
-
-export interface ChapterStat {
-  chapter: string;
-  responses: number;
-  attempts: number;
-  lowN: boolean;
-}
-
-export interface Summary {
-  responses: number;
-  chapters: number;
-  sessions: number;
-  attempts: number;
-  completed: number;
-  completionRate: number | null;
-  excluded: number;
-  items: ItemStat[];
-  categories: CategoryStat[];
-  perChapter: ChapterStat[];
-}
-
-function inRange(iso: string, f: ExportFilters): boolean {
-  const day = iso.slice(0, 10);
-  if (f.from && day < f.from) return false;
-  if (f.to && day > f.to) return false;
-  return true;
+/** Manual codes win over the automatic first pass. */
+export function codesOf(r: ResponseRow, rc: RecodeMap): Code[] {
+  const m = rc.get(r.answer_id);
+  return m && m.codes.length ? m.codes : r.strategy_codes;
 }
 
 export function applyFilters(data: ExportData, f: ExportFilters): ExportData {
-  const chapterOk = (c: string) => !f.chapter || c === f.chapter;
+  const day = (iso: string) => iso.slice(0, 10);
+  const ok = (sid: string, chapter: string, iso: string) =>
+    (!f.session_id || sid === f.session_id) && (!f.chapter || chapter === f.chapter) && (!f.from || day(iso) >= f.from) && (!f.to || day(iso) <= f.to);
+  const chapterOf = new Map(data.sessions.map((s) => [s.id, s.chapter_code]));
   return {
-    sessions: data.sessions.filter((s) => chapterOk(s.chapter_code) && inRange(s.created_at, f)),
-    attempts: data.attempts.filter((a) => chapterOk(a.chapter_code) && inRange(a.started_at, f)),
-    responses: data.responses.filter((r) => chapterOk(r.chapter_code) && inRange(r.answered_at, f)),
+    sessions: data.sessions.filter((s) => ok(s.id, s.chapter_code, s.created_at)),
+    students: data.students.filter((s) => ok(s.session_id, s.chapter_code, s.started_at)),
+    responses: data.responses.filter((r) => ok(r.session_id, chapterOf.get(r.session_id) ?? r.chapter_code, r.answered_at)),
+    recodes: data.recodes,
   };
 }
 
-/** Aggregate-only analysis. Item order follows `itemOrder`; unknown ids are appended. */
-export function summarize(data: ExportData, categoryOf: (id: string) => DecaCategory | undefined, itemOrder: string[] = []): Summary {
-  const { responses, attempts } = data;
+export function stepRows(data: ExportData, item: string, step: string): ResponseRow[] {
+  return data.responses.filter((r) => r.item_id === item && r.step_id === step);
+}
 
-  const byItem = new Map<string, ResponseRow[]>();
-  for (const r of responses) byItem.set(r.item_id, [...(byItem.get(r.item_id) ?? []), r]);
-  const ids = [...itemOrder.filter((id) => byItem.has(id)), ...[...byItem.keys()].filter((id) => !itemOrder.includes(id)).sort()];
+/** Students who reached this item (used for "n = 22, 2 blank"). */
+export function reached(data: ExportData, item: string): number {
+  return new Set(data.responses.filter((r) => r.item_id === item).map((r) => `${r.session_id}:${r.student_code}`)).size;
+}
 
-  let excludedTotal = 0;
-  const items: ItemStat[] = ids.map((item_id) => {
-    const rows = byItem.get(item_id)!;
-    const les = rows.map((r) => logError(r.estimate, r.truth)).filter((x): x is number => x !== null);
-    const excluded = rows.length - les.length;
-    excludedTotal += excluded;
-    const dirs = les.map(direction);
-    // Excluded (≤0) estimates are below any positive truth, so they count as "under".
-    const share = (d: string) => (rows.length ? (dirs.filter((x) => x === d).length + (d === 'under' ? excluded : 0)) / rows.length : 0);
-    return { item_id, n: rows.length, excluded, median: median(les), under: share('under'), over: share('over'), exact: share('exact') };
+export interface CodeShare {
+  code: Code;
+  n: number;
+  share: number;
+}
+
+/** Share of answers carrying each code (an answer can carry several). */
+export function codeShares(rows: ResponseRow[], rc: RecodeMap): CodeShare[] {
+  const counts = new Map<Code, number>();
+  for (const r of rows) for (const c of codesOf(r, rc)) counts.set(c, (counts.get(c) ?? 0) + 1);
+  return [...counts.entries()].map(([code, n]) => ({ code, n, share: rows.length ? n / rows.length : 0 })).sort((a, b) => b.n - a.n);
+}
+
+export function shareCorrect(rows: ResponseRow[], rc: RecodeMap): number | null {
+  const scored = rows.filter((r) => codesOf(r, rc).length > 0);
+  return scored.length ? scored.filter((r) => codesOf(r, rc).includes('CORR')).length / scored.length : null;
+}
+
+export interface RatingPair {
+  student: string;
+  gut: number;
+  post: number;
+}
+
+export function ratingPairs(data: ExportData, item: string, gut: string, post: string): RatingPair[] {
+  const key = (r: ResponseRow) => `${r.session_id}:${r.student_code}`;
+  const g = new Map(stepRows(data, item, gut).filter((r) => r.raw_value !== null).map((r) => [key(r), r]));
+  const out: RatingPair[] = [];
+  for (const p of stepRows(data, item, post)) {
+    const a = g.get(key(p));
+    if (a && p.raw_value !== null) out.push({ student: p.student_code, gut: a.raw_value as number, post: p.raw_value });
+  }
+  return out;
+}
+
+/** Shade bar vs typed answer disagree by more than 1% of the whole. */
+export function shadeMismatch(rows: ResponseRow[], whole: number): ResponseRow[] {
+  return rows.filter((r) => {
+    const f = r.value?.fraction;
+    return typeof f === 'number' && r.raw_value !== null && Math.abs(f * whole - r.raw_value) > whole * 0.01;
   });
+}
 
-  const categories: CategoryStat[] = DECA_CATEGORIES.map((category) => {
-    const rows = responses.filter((r) => categoryOf(r.item_id) === category);
-    const les = rows.map((r) => logError(r.estimate, r.truth)).filter((x): x is number => x !== null);
-    return { category, n: rows.length, median: median(les) };
-  }).filter((c) => c.n > 0);
+/** Receipt: total ≠ base + the tax the student typed (±1 cent). */
+export function receiptMismatch(data: ExportData, item: string, base: number, taxStep: string, totalStep: string): { checked: number; mismatched: ResponseRow[] } {
+  const key = (r: ResponseRow) => `${r.session_id}:${r.student_code}`;
+  const tax = new Map(stepRows(data, item, taxStep).map((r) => [key(r), r.raw_value]));
+  const totals = stepRows(data, item, totalStep).filter((r) => r.raw_value !== null && tax.get(key(r)) != null);
+  return { checked: totals.length, mismatched: totals.filter((r) => Math.abs((r.raw_value as number) - (base + (tax.get(key(r)) as number))) > 0.011) };
+}
 
-  // Completion: an attempt is complete when it has an answer for every item it was dealt.
-  const answered = new Map<string, Set<string>>();
-  for (const r of responses) answered.set(r.attempt_id, (answered.get(r.attempt_id) ?? new Set()).add(r.item_id));
-  const completed = attempts.filter((a) => (answered.get(a.attempt_id)?.size ?? 0) >= a.item_count).length;
+export function split<K extends string>(rows: { k: K | null }[]): { key: K; n: number; share: number }[] {
+  const m = new Map<K, number>();
+  for (const r of rows) if (r.k) m.set(r.k, (m.get(r.k) ?? 0) + 1);
+  const total = [...m.values()].reduce((a, b) => a + b, 0);
+  return [...m.entries()].map(([key, n]) => ({ key, n, share: total ? n / total : 0 })).sort((a, b) => b.n - a.n);
+}
 
-  const chapters = new Map<string, ChapterStat>();
-  const ch = (c: string) => chapters.get(c) ?? chapters.set(c, { chapter: c, responses: 0, attempts: 0, lowN: true }).get(c)!;
-  for (const r of responses) ch(r.chapter_code).responses++;
-  for (const a of attempts) ch(a.chapter_code).attempts++;
-  const perChapter = [...chapters.values()]
-    .map((c) => ({ ...c, lowN: c.responses < LOW_N }))
-    .sort((a, b) => b.responses - a.responses || a.chapter.localeCompare(b.chapter));
+export interface QualityFlags {
+  straightLined: string[];
+  identical: string[];
+  tooFast: string[];
+}
 
+/** Data-quality flags per student code (exploratory). */
+export function qualityFlags(data: ExportData): QualityFlags {
+  const by = new Map<string, ResponseRow[]>();
+  for (const r of data.responses) by.set(`${r.session_id}:${r.student_code}`, [...(by.get(`${r.session_id}:${r.student_code}`) ?? []), r]);
+  const out: QualityFlags = { straightLined: [], identical: [], tooFast: [] };
+  for (const [k, rows] of by) {
+    const code = k.split(':')[1];
+    const ratings = rows.filter((r) => r.step_id === 'gut' || r.step_id === 'post').map((r) => r.raw_value);
+    if (ratings.length >= 4 && new Set(ratings).size === 1) out.straightLined.push(code);
+    const nums = rows.filter((r) => r.raw_value !== null && r.step_id !== 'gut' && r.step_id !== 'post').map((r) => r.raw_value);
+    if (nums.length >= 5) {
+      const top = Math.max(...[...new Set(nums)].map((v) => nums.filter((x) => x === v).length));
+      if (top / nums.length >= 0.6) out.identical.push(code);
+    }
+  }
+  for (const s of data.students) if (s.finished_at && Date.parse(s.finished_at) - Date.parse(s.started_at) < FAST_FINISH_MS) out.tooFast.push(s.student_code);
+  return out;
+}
+
+export interface TopBar {
+  started: number;
+  finished: number;
+  medianMinutes: number | null;
+  unk: number;
+  methods: { key: string; n: number; share: number }[];
+  devices: { key: string; n: number; share: number }[];
+  flags: QualityFlags;
+}
+
+export function topBar(data: ExportData, rc: RecodeMap): TopBar {
+  const finished = data.students.filter((s) => s.finished_at);
   return {
-    responses: responses.length,
-    chapters: new Set(responses.map((r) => r.chapter_code)).size,
-    sessions: new Set(responses.map((r) => r.session_id)).size,
-    attempts: attempts.length,
-    completed,
-    completionRate: attempts.length ? completed / attempts.length : null,
-    excluded: excludedTotal,
-    items,
-    categories,
-    perChapter,
+    started: data.students.length,
+    finished: finished.length,
+    medianMinutes: median(finished.map((s) => (Date.parse(s.finished_at!) - Date.parse(s.started_at)) / 60_000)),
+    unk: data.responses.filter((r) => codesOf(r, rc).includes('UNK')).length,
+    methods: split(data.responses.map((r) => ({ k: r.input_method }))),
+    devices: split(data.students.map((s) => ({ k: s.device_type }))),
+    flags: qualityFlags(data),
   };
+}
+
+export interface Bin {
+  x0: number;
+  x1: number;
+  n: number;
+}
+
+/** Equal-width bins (log-spaced on log axes). */
+export function histogram(values: number[], min: number, max: number, bins: number, log = false): Bin[] {
+  const f = (v: number) => (log ? Math.log(v) : v);
+  const g = (v: number) => (log ? Math.exp(v) : v);
+  const a = f(min);
+  const b = f(max);
+  const out: Bin[] = Array.from({ length: bins }, (_, i) => ({ x0: g(a + ((b - a) * i) / bins), x1: g(a + ((b - a) * (i + 1)) / bins), n: 0 }));
+  for (const v of values) {
+    if (log && v <= 0) continue;
+    const i = Math.min(bins - 1, Math.max(0, Math.floor(((f(v) - a) / (b - a)) * bins)));
+    out[i].n++;
+  }
+  return out;
 }

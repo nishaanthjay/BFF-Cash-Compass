@@ -133,17 +133,19 @@ export const motion = {
 /** Chart series styling (bars always carry a dark sticker stroke for ≥3:1 non-text contrast). */
 export const chart = {
   /**
-   * Error direction is a diverging job: two poles + a neutral midpoint.
-   * Validated with the dataviz palette checker (CVD ΔE ≥ 11.9; the gray midpoint
-   * is intentionally low-chroma). Under = pink like the student reveal, over = blue.
+   * Answer classes (spec §5.3): one colour for correct, one for named wrong patterns,
+   * gray for unclassified. Validated with the dataviz CVD checker (adjacent ΔE ≥ 11.9);
+   * shapes (circle / diamond / hollow) and labels carry the meaning too.
    */
-  under: '#DB2777',
-  exact: '#94A3B8',
-  over: color.primary,
-  /** Neutral bar fill for magnitudes (responses per chapter). */
+  correct: color.primary,
+  wrong: '#DB2777',
+  unk: '#94A3B8',
+  /** Neutral magnitude bars. */
   bar: color.primary,
   axis: color.mutedForeground,
   grid: color.border,
+  band: '#FCE7F3',
+  bandCorrect: '#E0F0FA',
   highlight: color.tertiary,
 } as const;
 

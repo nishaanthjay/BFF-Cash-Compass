@@ -1,86 +1,107 @@
 /**
- * Data model shared by the Supabase client, the in-browser mock and analysis.
- * Privacy: nothing here identifies a student. A response is tied only to a
- * chapter code (via its session), an item, the numeric answer and timestamps.
- * `attempt_id` is a random id for one run-through, used for completion rate;
- * it is never reused and never linked across sessions.
+ * Data model shared by the Supabase client, the in-browser mock and the dashboard.
+ * Privacy: no names, emails, schools, birthdates or IPs in any row. A student is an
+ * anonymous code assigned at the start of the questionnaire.
  */
+import type { Code } from '../items/families';
+import type { Module } from '../items/types';
+import type { InputMethod, DeviceType } from '../lib/telemetry';
 
 export type SessionStatus = 'open' | 'closed';
 
 export interface Session {
   id: string;
   chapter_code: string;
+  cohort_label: string | null;
+  modules: Module[];
   status: SessionStatus;
   created_at: string;
   closed_at: string | null;
 }
 
 export interface SessionStats {
-  attempts: number;
-  completed: number;
+  students: number;
+  finished: number;
   responses: number;
 }
 
 export interface OpenSession extends Session, SessionStats {}
 
-/** What a student gets back when they type a chapter code. */
 export interface JoinedSession {
   session_id: string;
   chapter_code: string;
+  cohort_label: string | null;
+  modules: Module[];
 }
 
-export interface AttemptRow {
-  attempt_id: string;
+export interface StudentRow {
+  student_code: string;
   session_id: string;
-  item_count: number;
+  /** Counterbalanced form per item, e.g. { S12: 'H', S11: 'AB' }. */
+  forms: Record<string, string>;
+  device_type: DeviceType;
+  expected_steps: number;
   started_at: string;
 }
 
+/** One locked step answer (spec §3 data model). */
 export interface AnswerRow {
   answer_id: string;
-  attempt_id: string;
   session_id: string;
+  student_code: string;
   item_id: string;
   item_version: number;
-  estimate: number;
-  /** True value at answer time (snapshot, so later item edits don't rewrite history). */
-  truth: number;
+  step_id: string;
+  form_version: string | null;
+  raw_value: number | null;
+  /** Structured extras: shaded fraction, chosen options, curve points, card order … */
+  value: Record<string, unknown> | null;
+  input_method: InputMethod | null;
+  strategy_codes: Code[];
+  correct_value: number | null;
+  time_to_first_touch_ms: number | null;
+  time_to_lock_ms: number | null;
+  n_revisions: number;
+  item_position: number;
+  free_text: string | null;
+  device_type: DeviceType;
   answered_at: string;
 }
 
 export interface ResponseRow extends AnswerRow {
   chapter_code: string;
+  cohort_label: string | null;
+}
+
+/** Manual coding: replaces auto strategy codes and/or tags a free-text answer (e.g. survivorship present/partial/absent). */
+export interface Recode {
+  answer_id: string;
+  codes: Code[];
+  tag?: string | null;
+  coded_at: string;
 }
 
 export interface ExportFilters {
+  session_id?: string;
   chapter?: string;
-  /** ISO date (inclusive), compared against answered_at / started_at. */
   from?: string;
   to?: string;
 }
 
 export interface ExportData {
   sessions: Session[];
-  attempts: (AttemptRow & { chapter_code: string })[];
+  students: (StudentRow & { chapter_code: string; finished_at: string | null })[];
   responses: ResponseRow[];
+  recodes: Recode[];
 }
 
 export interface SyncResult {
-  attempts: number;
+  students: number;
   answers: number;
-  /** Ids the server refused permanently (e.g. the session was closed). */
   rejected: string[];
 }
 
-export type ApiErrorCode =
-  | 'network'
-  | 'rate_limited'
-  | 'not_found'
-  | 'session_closed'
-  | 'bad_passcode'
-  | 'invalid'
-  | 'chapter_busy';
+export type ApiErrorCode = 'network' | 'rate_limited' | 'not_found' | 'session_closed' | 'bad_passcode' | 'invalid' | 'chapter_busy';
 
 export class ApiError extends Error {
   constructor(
@@ -96,17 +117,19 @@ export interface ApiClient {
   readonly mode: 'demo' | 'supabase';
   // Student (anonymous)
   joinSession(chapterCode: string): Promise<JoinedSession>;
-  sync(deviceToken: string, attempts: AttemptRow[], answers: AnswerRow[]): Promise<SyncResult>;
+  /** Step ids (item_id.step_id) already stored for this code in this session, for resume. */
+  resumeStudent(sessionId: string, studentCode: string): Promise<{ locked: string[] } | null>;
+  sync(deviceToken: string, students: StudentRow[], answers: AnswerRow[]): Promise<SyncResult>;
   // Facilitator (single shared passcode)
   verifyPasscode(passcode: string): Promise<boolean>;
-  createSession(passcode: string, chapterCode: string): Promise<Session>;
+  createSession(passcode: string, chapterCode: string, modules: Module[], cohortLabel: string | null): Promise<Session>;
   openSessions(passcode: string): Promise<OpenSession[]>;
   sessionStats(passcode: string, sessionId: string): Promise<SessionStats & { status: SessionStatus }>;
   closeSession(passcode: string, sessionId: string): Promise<void>;
   exportData(passcode: string, filters?: ExportFilters): Promise<ExportData>;
+  recode(passcode: string, answerId: string, codes: Code[], tag?: string | null): Promise<void>;
 }
 
-/** Chapter codes: 3–10 uppercase letters/digits. */
 export const CHAPTER_CODE = /^[A-Z0-9]{3,10}$/;
 
 export function normalizeChapter(input: string): string {

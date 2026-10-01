@@ -1,4 +1,4 @@
-import type { AnswerRow, AttemptRow, SyncResult } from '../api/types';
+import type { AnswerRow, StudentRow, SyncResult } from '../api/types';
 import { ApiError } from '../api/types';
 import { readJSON, writeJSON, type KV } from './storage';
 
@@ -9,7 +9,7 @@ import { readJSON, writeJSON, type KV } from './storage';
  */
 
 export interface QueueState {
-  attempts: AttemptRow[];
+  students: StudentRow[];
   answers: AnswerRow[];
   /** Answers the server refused permanently (e.g. session closed before they synced). */
   lost: number;
@@ -17,9 +17,11 @@ export interface QueueState {
 
 export type FlushOutcome = 'synced' | 'empty' | 'offline' | 'rate_limited' | 'rejected' | 'busy';
 
-export type Sender = (attempts: AttemptRow[], answers: AnswerRow[]) => Promise<SyncResult>;
+export type Sender = (students: StudentRow[], answers: AnswerRow[]) => Promise<SyncResult>;
 
-const EMPTY: QueueState = { attempts: [], answers: [], lost: 0 };
+const studentKey = (s: StudentRow) => `${s.session_id}:${s.student_code}`;
+
+const EMPTY: QueueState = { students: [], answers: [], lost: 0 };
 
 export class SyncQueue {
   private state: QueueState;
@@ -33,7 +35,8 @@ export class SyncQueue {
     private key = 'mc.queue',
     private batchSize = 25,
   ) {
-    this.state = readJSON<QueueState>(kv, key, EMPTY);
+    const loaded = readJSON<Partial<QueueState>>(kv, key, EMPTY);
+    this.state = { students: loaded.students ?? [], answers: loaded.answers ?? [], lost: loaded.lost ?? 0 };
   }
 
   get snapshot(): QueueState {
@@ -41,7 +44,7 @@ export class SyncQueue {
   }
 
   get pending(): number {
-    return this.state.answers.length + this.state.attempts.length;
+    return this.state.answers.length + this.state.students.length;
   }
 
   /** Exponential backoff for the next automatic retry: 1s, 2s, 4s … capped at 30s. */
@@ -54,14 +57,14 @@ export class SyncQueue {
     return () => this.listeners.delete(fn);
   }
 
-  addAttempt(a: AttemptRow) {
-    if (this.state.attempts.some((x) => x.attempt_id === a.attempt_id)) return;
-    this.set({ ...this.state, attempts: [...this.state.attempts, a] });
+  addStudent(st: StudentRow) {
+    if (this.state.students.some((x) => x.student_code === st.student_code && x.session_id === st.session_id)) return;
+    this.set({ ...this.state, students: [...this.state.students, st] });
   }
 
   addAnswer(a: AnswerRow) {
-    // One answer per (attempt, item): a re-submit replaces the queued one.
-    const answers = this.state.answers.filter((x) => !(x.attempt_id === a.attempt_id && x.item_id === a.item_id));
+    // One answer per (student, item, step): a duplicate lock replaces the queued one.
+    const answers = this.state.answers.filter((x) => !(x.student_code === a.student_code && x.item_id === a.item_id && x.step_id === a.step_id));
     this.set({ ...this.state, answers: [...answers, a] });
   }
 
@@ -71,11 +74,11 @@ export class SyncQueue {
     this.flushing = true;
     try {
       while (this.pending > 0) {
-        const attempts = this.state.attempts;
+        const students = this.state.students;
         const answers = this.state.answers.slice(0, this.batchSize);
         let res: SyncResult;
         try {
-          res = await this.send(attempts, answers);
+          res = await this.send(students, answers);
         } catch (e) {
           const code = e instanceof ApiError ? e.code : 'network';
           if (code === 'network' || code === 'rate_limited') {
@@ -83,13 +86,13 @@ export class SyncQueue {
             return code === 'network' ? 'offline' : 'rate_limited';
           }
           // Permanent refusal of the whole batch (e.g. session closed): drop it so the queue can't jam.
-          this.drop(attempts.map((a) => a.attempt_id), answers.map((a) => a.answer_id), answers.length);
+          this.drop(students.map(studentKey), answers.map((a) => a.answer_id), answers.length);
           this.failures = 0;
           return 'rejected';
         }
         const rejected = new Set(res.rejected);
         const lost = answers.filter((a) => rejected.has(a.answer_id)).length;
-        this.drop(attempts.map((a) => a.attempt_id), answers.map((a) => a.answer_id), lost);
+        this.drop(students.map(studentKey), answers.map((a) => a.answer_id), lost);
         this.failures = 0;
       }
       return 'synced';
@@ -98,11 +101,11 @@ export class SyncQueue {
     }
   }
 
-  private drop(attemptIds: string[], answerIds: string[], lost: number) {
-    const a = new Set(attemptIds);
+  private drop(studentKeys: string[], answerIds: string[], lost: number) {
+    const a = new Set(studentKeys);
     const b = new Set(answerIds);
     this.set({
-      attempts: this.state.attempts.filter((x) => !a.has(x.attempt_id)),
+      students: this.state.students.filter((x) => !a.has(studentKey(x))),
       answers: this.state.answers.filter((x) => !b.has(x.answer_id)),
       lost: this.state.lost + lost,
     });

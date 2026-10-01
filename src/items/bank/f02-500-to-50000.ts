@@ -1,0 +1,101 @@
+import { defineProblem } from '../types';
+
+/** DRAFT wording, from the Interaction & Admin Visual Spec, F2. */
+export default defineProblem({
+  id: 'F2',
+  slug: '500-to-50000',
+  title: '$500 into $50,000',
+  version: 1,
+  active: true,
+  draft: true,
+  module: 'feasibility',
+  deca_category: 'investing',
+  families: ['feasibility', 'compounding'],
+  scenario: {
+    layout: 'claim',
+    who: '@moneymoves_jay',
+    source: 'post',
+    claim: 'I turned $500 into $50,000 in one year trading. Anyone can do it.',
+  },
+  steps: [
+    {
+      id: 'gut',
+      kind: 'rating_gut',
+      label: 'Gut rating',
+      prompt: 'How believable is this post? Go with your gut.',
+      input: { type: 'dial' },
+    },
+    {
+      id: 's2',
+      kind: 'control',
+      label: 'Step 2 · how many times bigger',
+      prompt: 'How many times bigger is $50,000 than $500?',
+      input: { type: 'number', unit: 'times' },
+      correct: 100,
+      codes: [
+        { code: 'DEC', value: 10 },
+        { code: 'DEC', value: 1000 },
+      ],
+    },
+    {
+      id: 's3',
+      kind: 'cold',
+      label: 'Step 3 · monthly growth guess',
+      prompt: 'To do this in 12 months, about how much would the money need to grow EACH month? Tap the meter.',
+      input: { type: 'numberLine', min: 1, max: 100, scale: 'log', unit: 'percent' },
+      correct: 46.78,
+      codes: [{ code: 'LIN', value: 8.33, tolPct: 4.1 }],
+    },
+    {
+      id: 's4',
+      kind: 'guided',
+      label: 'Step 4 · actual monthly rate',
+      prompt: 'Now work it out. What monthly growth turns $500 into $50,000 in 12 months? You can use a calculator.',
+      input: { type: 'number', unit: 'percent' },
+      calculator: true,
+      correct: 46.78,
+      codes: [
+        { code: 'LIN', value: 8.33, tolPct: 4.1 },
+        { code: 'LIN', value: 825 },
+      ],
+    },
+    {
+      id: 's5',
+      kind: 'control',
+      label: 'Step 5 · savings account monthly growth',
+      prompt: 'A savings account pays 4.2% a year. About how much is that per month, in percent?',
+      input: { type: 'number', unit: 'percent' },
+      correct: 0.35,
+      correctTolPct: 3, // 4.2 ÷ 12 = 0.350; compounding-exact 0.343
+      codes: [{ code: 'DEC', value: 4.2 }],
+    },
+    {
+      id: 'why',
+      kind: 'why',
+      label: 'Why only this person?',
+      prompt: 'Why might you hear about this person, and not about the others who tried and lost money?',
+      input: { type: 'text', placeholder: 'Type a short answer. Please don’t type any names.' },
+      optional: true,
+    },
+    {
+      id: 'post',
+      kind: 'rating_post',
+      label: 'Rating after the math',
+      prompt: 'Now that you have worked through it, how believable is the post?',
+      input: { type: 'dial' },
+    },
+  ],
+  admin: [
+    {
+      type: 'dots',
+      step: 's3',
+      title: 'Step 3: monthly growth guess (log scale)',
+      primary: true,
+    },
+    { type: 'textTags', step: 'why', title: 'Survivorship reasoning', tags: ['present', 'partial', 'absent'] },
+    { type: 'dumbbell', gut: 'gut', post: 'post', title: 'Believability: gut vs after the math' },
+    { type: 'calibration', gut: 'gut', post: 'post', title: 'Calibration' },
+  ],
+  decision: 'A cluster near 8% shows linear thinking about growth. A large “absent” survivorship bar is a teaching hook.',
+  notes: ['Rates: 46.8%/month = 100^(1/12) − 1. Linear guess ≈ 100% ÷ 12 = 8.3%.'],
+});

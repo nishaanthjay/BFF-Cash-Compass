@@ -1,57 +1,64 @@
+import type { Module } from '../items/types';
 import { checkRateLimit } from '../lib/rateLimit';
 import { readJSON, writeJSON, type KV } from '../lib/storage';
 import { uuid } from '../lib/uuid';
-import { buildSeed, type MockDB } from './seed';
-import {
-  ApiError,
-  CHAPTER_CODE,
-  normalizeChapter,
-  type ApiClient,
-  type ExportData,
-  type ExportFilters,
-  type Session,
-} from './types';
+import { buildSeed, type SeedData } from './seed';
+import { ApiError, CHAPTER_CODE, normalizeChapter, type ApiClient, type ExportData, type ExportFilters, type Session } from './types';
 
 export const DEMO_PASSCODE = 'demo';
-const KEY = 'mc.mock.db.v2';
+const KEY = 'mc.mock.db.v3';
+
+/** Things created in this browser (the seed itself is regenerated in memory on load). */
+interface LiveDB extends SeedData {
+  closed: Record<string, string>; // seeded session id -> closed_at (if closed in demo)
+  rateAnswers: Record<string, number[]>;
+  rateStudents: Record<string, number>;
+}
+const EMPTY: LiveDB = { sessions: [], students: [], answers: [], recodes: [], closed: {}, rateAnswers: {}, rateStudents: {} };
 
 /**
- * In-browser stand-in for the Supabase RPCs. Enforces the same rules as the
- * SQL functions (open-session-only inserts, rate limits, passcode) so demo
- * mode exercises the real client paths.
+ * In-browser stand-in for the Supabase RPCs. Enforces the same rules as the SQL
+ * (open-session-only inserts, rate limits, passcode) so demo mode exercises the
+ * real client paths.
  */
-export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => number; isOnline?: () => boolean } = {}): ApiClient {
+export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => number; isOnline?: () => boolean; seed?: SeedData } = {}): ApiClient {
   const now = opts.now ?? Date.now;
   const latency = opts.latencyMs ?? 120;
   const online = opts.isOnline ?? (() => (typeof navigator === 'undefined' ? true : navigator.onLine));
-  let db: MockDB = readJSON<MockDB | null>(kv, KEY, null) ?? buildSeed(now());
-  const save = () => writeJSON(kv, KEY, db);
-  save();
+  let seed: SeedData | null = opts.seed ?? null;
+  const getSeed = () => (seed ??= buildSeed(now()));
+  let live: LiveDB = { ...EMPTY, ...readJSON<Partial<LiveDB>>(kv, KEY, {}) };
+
+  const all = () => {
+    const s = getSeed();
+    return {
+      sessions: [...s.sessions.map((x) => (live.closed[x.id] ? { ...x, status: 'closed' as const, closed_at: live.closed[x.id] } : x)), ...live.sessions],
+      students: [...s.students, ...live.students],
+      answers: [...s.answers, ...live.answers],
+      recodes: [...s.recodes, ...live.recodes],
+    };
+  };
 
   async function call<T>(fn: () => T): Promise<T> {
     if (latency) await new Promise((r) => setTimeout(r, latency));
     if (!online()) throw new ApiError('network', 'You appear to be offline');
-    // Re-read so several tabs (facilitator + student in one browser) share one demo DB.
-    db = readJSON<MockDB | null>(kv, KEY, null) ?? db;
+    live = { ...EMPTY, ...readJSON<Partial<LiveDB>>(kv, KEY, {}) }; // share one demo DB across tabs
     const out = fn();
-    save();
+    writeJSON(kv, KEY, live);
     return out;
   }
   const auth = (p: string) => {
     if (p !== DEMO_PASSCODE) throw new ApiError('bad_passcode', 'Wrong passcode');
   };
+  const sessionById = (id: string) => all().sessions.find((s) => s.id === id);
   const stats = (sessionId: string) => {
-    const attempts = db.attempts.filter((a) => a.session_id === sessionId);
-    const answers = db.answers.filter((a) => a.session_id === sessionId);
+    const a = all();
+    const students = a.students.filter((s) => s.session_id === sessionId);
+    const answers = a.answers.filter((x) => x.session_id === sessionId);
     const per = new Map<string, number>();
-    for (const a of answers) per.set(a.attempt_id, (per.get(a.attempt_id) ?? 0) + 1);
-    return {
-      attempts: attempts.length,
-      responses: answers.length,
-      completed: attempts.filter((a) => (per.get(a.attempt_id) ?? 0) >= a.item_count).length,
-    };
+    for (const x of answers) per.set(x.student_code, (per.get(x.student_code) ?? 0) + 1);
+    return { students: students.length, responses: answers.length, finished: students.filter((s) => (per.get(s.student_code) ?? 0) >= s.expected_steps).length };
   };
-  const chapterOf = (sessionId: string) => db.sessions.find((s) => s.id === sessionId)?.chapter_code ?? '';
 
   return {
     mode: 'demo',
@@ -59,82 +66,86 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
     joinSession: (code) =>
       call(() => {
         const c = normalizeChapter(code);
-        const s = db.sessions.find((x) => x.chapter_code === c && x.status === 'open');
+        const s = all().sessions.find((x) => x.chapter_code === c && x.status === 'open');
         if (!s) throw new ApiError('not_found', 'No open session for that chapter code');
-        return { session_id: s.id, chapter_code: s.chapter_code };
+        return { session_id: s.id, chapter_code: s.chapter_code, cohort_label: s.cohort_label, modules: s.modules };
       }),
 
-    sync: (token, attempts, answers) =>
+    resumeStudent: (sessionId, code) =>
+      call(() => {
+        const a = all();
+        if (!a.students.some((s) => s.session_id === sessionId && s.student_code === code)) return null;
+        return { locked: a.answers.filter((x) => x.session_id === sessionId && x.student_code === code).map((x) => `${x.item_id}.${x.step_id}`) };
+      }),
+
+    sync: (token, students, answers) =>
       call(() => {
         const t = now();
-        const isOpen = (id: string) => db.sessions.some((s) => s.id === id && s.status === 'open');
-        const decision = checkRateLimit({
-          now: t,
-          answerTimes: db.rateAnswers[token] ?? [],
-          incoming: answers.filter((a) => !db.answers.some((x) => x.answer_id === a.answer_id)).length,
-          attemptsInSession: 0,
-          newAttempts: 0,
-        });
-        if (!decision.ok) throw new ApiError('rate_limited', 'Slow down a little');
-
-        let nAttempts = 0;
+        const a = all();
+        const isOpen = (id: string) => sessionById(id)?.status === 'open';
+        const fresh = answers.filter((x) => !a.answers.some((y) => y.answer_id === x.answer_id));
+        if (!checkRateLimit({ now: t, answerTimes: live.rateAnswers[token] ?? [], incoming: fresh.length, attemptsInSession: 0, newAttempts: 0 }).ok)
+          throw new ApiError('rate_limited', 'Slow down a little');
         const rejected: string[] = [];
-        for (const a of attempts) {
-          if (db.attempts.some((x) => x.attempt_id === a.attempt_id)) continue;
-          if (!isOpen(a.session_id)) {
-            rejected.push(a.attempt_id);
+        let nStudents = 0;
+        for (const st of students) {
+          if (all().students.some((x) => x.session_id === st.session_id && x.student_code === st.student_code)) continue;
+          const k = `${token}:${st.session_id}`;
+          if (!isOpen(st.session_id) || !checkRateLimit({ now: t, answerTimes: [], incoming: 0, attemptsInSession: live.rateStudents[k] ?? 0, newAttempts: 1 }).ok) {
+            rejected.push(st.student_code);
             continue;
           }
-          const k = `${token}:${a.session_id}`;
-          const d = checkRateLimit({ now: t, answerTimes: [], incoming: 0, attemptsInSession: db.rateAttempts[k] ?? 0, newAttempts: 1 });
-          if (!d.ok) {
-            rejected.push(a.attempt_id);
-            continue;
-          }
-          db.rateAttempts[k] = (db.rateAttempts[k] ?? 0) + 1;
-          db.attempts.push({ ...a, started_at: a.started_at });
-          nAttempts++;
+          live.rateStudents[k] = (live.rateStudents[k] ?? 0) + 1;
+          live.students.push({ ...st, finished_at: null });
+          nStudents++;
         }
         let nAnswers = 0;
-        for (const a of answers) {
-          if (db.answers.some((x) => x.answer_id === a.answer_id)) continue; // idempotent retry
-          const att = db.attempts.find((x) => x.attempt_id === a.attempt_id);
-          if (!att || att.session_id !== a.session_id || !isOpen(a.session_id) || !(a.estimate >= 0) || !(a.estimate < 1e12)) {
-            rejected.push(a.answer_id);
+        for (const x of fresh) {
+          const now2 = all();
+          const st = now2.students.find((s) => s.session_id === x.session_id && s.student_code === x.student_code);
+          const dup = now2.answers.some((y) => y.session_id === x.session_id && y.student_code === x.student_code && y.item_id === x.item_id && y.step_id === x.step_id);
+          const bad = x.raw_value !== null && !(x.raw_value >= 0 && x.raw_value < 1e12);
+          if (!st || !isOpen(x.session_id) || dup || bad) {
+            rejected.push(x.answer_id);
             continue;
           }
-          db.answers.push(a);
-          (db.rateAnswers[token] ??= []).push(t);
+          live.answers.push(x);
+          (live.rateAnswers[token] ??= []).push(t);
           nAnswers++;
+          const mine = live.answers.filter((y) => y.session_id === x.session_id && y.student_code === x.student_code).length;
+          const ls = live.students.find((s) => s.session_id === x.session_id && s.student_code === x.student_code);
+          if (ls && mine >= ls.expected_steps) ls.finished_at = new Date(t).toISOString();
         }
-        db.rateAnswers[token] = (db.rateAnswers[token] ?? []).filter((x) => t - x < 60_000);
-        return { attempts: nAttempts, answers: nAnswers, rejected };
+        live.rateAnswers[token] = (live.rateAnswers[token] ?? []).filter((y) => t - y < 60_000);
+        return { students: nStudents, answers: nAnswers, rejected };
       }),
 
     verifyPasscode: (p) => call(() => p === DEMO_PASSCODE),
 
-    createSession: (p, code) =>
+    createSession: (p, code, modules: Module[], cohort) =>
       call(() => {
         auth(p);
         const c = normalizeChapter(code);
         if (!CHAPTER_CODE.test(c)) throw new ApiError('invalid', 'Chapter codes are 3–10 letters or numbers');
-        if (db.sessions.some((s) => s.chapter_code === c && s.status === 'open'))
-          throw new ApiError('chapter_busy', 'That chapter already has an open session');
-        const s: Session = { id: uuid(), chapter_code: c, status: 'open', created_at: new Date(now()).toISOString(), closed_at: null };
-        db.sessions.push(s);
+        if (!modules.length) throw new ApiError('invalid', 'Pick at least one module');
+        if (all().sessions.some((s) => s.chapter_code === c && s.status === 'open')) throw new ApiError('chapter_busy', 'That chapter already has an open session');
+        const s: Session = { id: uuid(), chapter_code: c, cohort_label: cohort?.trim() || null, modules, status: 'open', created_at: new Date(now()).toISOString(), closed_at: null };
+        live.sessions.push(s);
         return s;
       }),
 
     openSessions: (p) =>
       call(() => {
         auth(p);
-        return db.sessions.filter((s) => s.status === 'open').map((s) => ({ ...s, ...stats(s.id) }));
+        return all()
+          .sessions.filter((s) => s.status === 'open')
+          .map((s) => ({ ...s, ...stats(s.id) }));
       }),
 
     sessionStats: (p, id) =>
       call(() => {
         auth(p);
-        const s = db.sessions.find((x) => x.id === id);
+        const s = sessionById(id);
         if (!s) throw new ApiError('not_found');
         return { ...stats(id), status: s.status };
       }),
@@ -142,27 +153,44 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
     closeSession: (p, id) =>
       call(() => {
         auth(p);
-        const s = db.sessions.find((x) => x.id === id);
+        const s = sessionById(id);
         if (!s) throw new ApiError('not_found');
-        if (s.status === 'open') Object.assign(s, { status: 'closed', closed_at: new Date(now()).toISOString() });
+        if (s.status !== 'open') return;
+        const at = new Date(now()).toISOString();
+        const mine = live.sessions.find((x) => x.id === id);
+        if (mine) Object.assign(mine, { status: 'closed', closed_at: at });
+        else live.closed[id] = at;
       }),
 
     exportData: (p, f: ExportFilters = {}) =>
       call((): ExportData => {
         auth(p);
+        const a = all();
+        const sess = new Map(a.sessions.map((s) => [s.id, s]));
         const day = (iso: string) => iso.slice(0, 10);
-        const ok = (chapter: string, iso: string) =>
-          (!f.chapter || chapter === f.chapter) && (!f.from || day(iso) >= f.from) && (!f.to || day(iso) <= f.to);
-        return {
-          sessions: db.sessions.filter((s) => ok(s.chapter_code, s.created_at)),
-          attempts: db.attempts.map((a) => ({ ...a, chapter_code: chapterOf(a.session_id) })).filter((a) => ok(a.chapter_code, a.started_at)),
-          responses: db.answers.map((a) => ({ ...a, chapter_code: chapterOf(a.session_id) })).filter((a) => ok(a.chapter_code, a.answered_at)),
+        const ok = (sid: string, iso: string) => {
+          const s = sess.get(sid);
+          return !!s && (!f.session_id || sid === f.session_id) && (!f.chapter || s.chapter_code === f.chapter) && (!f.from || day(iso) >= f.from) && (!f.to || day(iso) <= f.to);
         };
+        return {
+          sessions: a.sessions.filter((s) => ok(s.id, s.created_at)),
+          students: a.students.filter((s) => ok(s.session_id, s.started_at)).map((s) => ({ ...s, chapter_code: sess.get(s.session_id)!.chapter_code })),
+          responses: a.answers
+            .filter((x) => ok(x.session_id, x.answered_at))
+            .map((x) => ({ ...x, chapter_code: sess.get(x.session_id)!.chapter_code, cohort_label: sess.get(x.session_id)!.cohort_label })),
+          recodes: a.recodes,
+        };
+      }),
+
+    recode: (p, answerId, codes, tag) =>
+      call(() => {
+        auth(p);
+        live.recodes = live.recodes.filter((r) => r.answer_id !== answerId);
+        live.recodes.push({ answer_id: answerId, codes, tag: tag ?? null, coded_at: new Date(now()).toISOString() });
       }),
   };
 }
 
-/** Wipe the demo database back to its seed (used by the "Reset demo" button). */
 export function resetMock(kv: KV) {
   kv.removeItem(KEY);
 }

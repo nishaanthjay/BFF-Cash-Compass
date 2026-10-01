@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { entryValue, pressKey, sanitizeEntry } from '../src/lib/entry';
 import { formatEntry } from '../src/lib/format';
-import { verdictFor } from '../src/lib/verdict';
-import { logTicks, revealDomain } from '../src/lib/logScale';
 
 describe('keypad entry', () => {
   it('builds numbers and backspaces', () => {
@@ -34,21 +32,3 @@ describe('keypad entry', () => {
   });
 });
 
-describe('reveal helpers', () => {
-  it('verdicts', () => {
-    expect(verdictFor(1050, 1000).kind).toBe('spot-on');
-    expect(verdictFor(1000, 3870).headline).toBe('3.9× too low');
-    expect(verdictFor(1300, 1000).headline).toBe('30% too high');
-    expect(verdictFor(0, 1000).kind).toBe('under');
-  });
-  it('domain spans at least a decade and contains both values', () => {
-    const [a, b] = revealDomain(1000, 1200);
-    expect(b / a).toBeGreaterThanOrEqual(10 - 1e-9);
-    expect(a).toBeLessThan(1000);
-    expect(b).toBeGreaterThan(1200);
-  });
-  it('ticks are nice and limited', () => {
-    expect(logTicks([300, 30000], 20)).toEqual([500, 1000, 2000, 5000, 10000, 20000]);
-    expect(logTicks([1, 1e9], 4).length).toBeLessThanOrEqual(5);
-  });
-});

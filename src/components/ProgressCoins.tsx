@@ -14,7 +14,7 @@ export function ProgressCoins({ current, total, label = 'Question' }: Props) {
           {label} <strong>{Math.min(current + 1, total)}</strong> of {total}
         </span>
         <span className="eyebrow" aria-hidden>
-          {done} {done === 1 ? 'coin' : 'coins'}
+          {done} done
         </span>
       </div>
       <div role="progressbar" aria-label={`${label} progress`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
