@@ -1,0 +1,80 @@
+import { defineProblem } from '../types';
+
+/** DRAFT wording, from the Interaction & Admin Visual Spec, S8. $15 a month, 5 years, 5% a year paid monthly. */
+export default defineProblem({
+  id: 'S8',
+  slug: 'fifteen-a-month',
+  title: '$15 a Month',
+  version: 1,
+  active: true,
+  draft: true,
+  module: 'skill',
+  deca_category: 'spending_saving',
+  families: ['compounding', 'arithmetic'],
+  scenario: {
+    layout: 'situation',
+    text: 'You put $15 into a savings account at the end of every month for 5 years. The account pays 5% a year, added every month.',
+    facts: [
+      { label: 'Each month', value: '$15' },
+      { label: 'Time', value: '5 years' },
+      { label: 'Interest', value: '5% a year, added monthly' },
+    ],
+  },
+  order: { notAdjacent: ['S6', 'S7'] },
+  steps: [
+    {
+      id: 's1',
+      kind: 'cold',
+      label: 'Step 1 · balance after 5 years',
+      prompt: 'About how much is in the jar after 5 years? Tap the jar.',
+      input: { type: 'jar', min: 100, max: 3000, scale: 'log', unit: 'usd' },
+      correct: 1020.09,
+      codes: [
+        { code: 'NOINT', value: 900 },
+        { code: 'LIN', value: 945 },
+        { code: 'LIN', value: 1125 },
+      ],
+    },
+    {
+      id: 's2',
+      kind: 'control',
+      label: 'Step 2 · total you put in',
+      prompt: 'How much money did YOU put in over the 5 years?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 900,
+      codes: [{ code: 'DEC', value: 90 }],
+    },
+    {
+      id: 's3',
+      kind: 'guided',
+      label: 'Step 3 · interest earned',
+      prompt: 'How much interest did the account earn in total?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 120.09,
+      codes: [{ code: 'NOINT', value: 0 }],
+    },
+    {
+      id: 's4',
+      kind: 'guided',
+      label: 'Step 4 · $30 a month',
+      prompt: 'Now you put in $30 a month instead. How much is in the account after 5 years?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 2040.18,
+      codes: [{ code: 'NOINT', value: 1800 }],
+    },
+  ],
+  admin: [
+    { type: 'dots', step: 's1', title: 'Step 1: balance after 5 years (log scale)', primary: true },
+    {
+      type: 'scatter',
+      title: 'Guess vs what they put in',
+      x: { step: 's2', axis: { min: 50, max: 5000, scale: 'log', unit: 'usd' } },
+      y: { step: 's1', axis: { min: 50, max: 5000, scale: 'log', unit: 'usd' } },
+      diagonal: true,
+      note: 'Points below the diagonal: the student guessed less than they put in.',
+    },
+    { type: 'vsRef', step: 's4', title: 'Step 4: is $30 a month exactly double?', ref: 2040.18, tolPct: 1, labels: ['Less than double', 'Exactly double', 'More than double'], unit: 'usd' },
+    { type: 'codeBar', steps: ['s1', 's2', 's3', 's4'], title: 'Where the error shows up, by step' },
+  ],
+  decision: 'A group clustering near $900 doesn’t expect interest on deposits.',
+});

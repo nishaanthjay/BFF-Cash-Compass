@@ -23,7 +23,7 @@ type Props = {
 
 const R = 5;
 const PAD_X = 24;
-const TOP = 46; // room for staggered reference labels
+const LABEL_ROW = 15;
 
 type Cls = 'corr' | 'wrong' | 'unk';
 const cls = (codes: Code[]): Cls => (codes.includes('CORR') ? 'corr' : codes.some((c) => c !== 'UNK') ? 'wrong' : 'unk');
@@ -40,6 +40,26 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
   const x = (v: number) => PAD_X + toFrac(v, axis) * (w - 2 * PAD_X);
   const useHist = vals.length > HISTOGRAM_N;
 
+  // Reference lines first: label rows are assigned greedily so close values don't overprint.
+  const refs = [
+    ...(correct !== null ? [{ code: 'CORR' as Code, value: correct, tol: 1 }] : []),
+    ...codes.map((c) => ({ code: c.code, value: c.value, tol: c.tolPct ?? 1 })),
+  ]
+    .filter((r) => r.value >= axis.min && r.value <= axis.max)
+    .sort((a, b) => a.value - b.value)
+    .map((r) => ({ ...r, text: r.code === 'CORR' ? `✓ ${formatUnit(r.value, axis.unit)}` : `${r.code} ${formatUnit(r.value, axis.unit)}` }));
+  const rowEnd: number[] = [];
+  const placed = refs.map((r) => {
+    const w2 = r.text.length * 6.6;
+    const start = x(r.value) - w2 / 2;
+    let row = rowEnd.findIndex((e) => e + 8 < start);
+    if (row < 0) row = rowEnd.length < 5 ? rowEnd.length : rowEnd.indexOf(Math.min(...rowEnd));
+    rowEnd[row] = x(r.value) + w2 / 2;
+    return { ...r, row };
+  });
+  const rows2 = Math.max(1, ...placed.map((r) => r.row + 1));
+  const TOP = 14 + rows2 * LABEL_ROW;
+
   const xs = vals.map((r) => x(r.raw_value as number));
   const ys = useHist ? [] : beeswarm(xs, R);
   const spread = Math.max(R * 2, ...ys.map((y) => Math.abs(y) + R + 2));
@@ -51,14 +71,6 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
   const H = base + 40;
   const below = vals.filter((r) => (r.raw_value as number) < axis.min).length;
   const above = vals.filter((r) => (r.raw_value as number) > axis.max).length;
-
-  // Reference lines: correct + each distinct predicted value, labels staggered on 2 rows.
-  const refs = [
-    ...(correct !== null ? [{ code: 'CORR' as Code, value: correct, tol: 1 }] : []),
-    ...codes.map((c) => ({ code: c.code, value: c.value, tol: c.tolPct ?? 1 })),
-  ]
-    .filter((r) => r.value >= axis.min && r.value <= axis.max)
-    .sort((a, b) => a.value - b.value);
 
   const select = (code: Code, value: number) => {
     if (!onSelect) return;
@@ -81,12 +93,12 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
         </span>
       </div>
       <svg className={s.svg} width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label={`Distribution of ${vals.length} answers${axis.scale === 'log' ? ' on a log scale' : ''}.`}>
-        {refs.map((r, i) => {
+        {placed.map((r) => {
           const rx = x(r.value);
           const lo = x(Math.max(axis.min, r.value * (1 - r.tol / 100)));
           const hi = x(Math.min(axis.max, r.value * (1 + r.tol / 100)));
           const corr = r.code === 'CORR';
-          const ly = i % 2 ? 30 : 14;
+          const ly = 12 + r.row * LABEL_ROW;
           return (
             <g key={`${r.code}-${r.value}`}>
               <rect x={Math.min(lo, rx - 3)} y={TOP - 4} width={Math.max(6, hi - lo)} height={plotH + 8} fill={corr ? chart.bandCorrect : chart.band} pointerEvents="none" />
@@ -107,7 +119,7 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect }: Pro
               )}
               <line pointerEvents="none" x1={rx} x2={rx} y1={ly + 4} y2={base} stroke={corr ? color.foreground : chart.wrong} strokeWidth={corr ? 2.5 : 2} strokeDasharray={corr ? undefined : '5 4'} />
               <text pointerEvents="none" className={s.refLabel} x={rx} y={ly} textAnchor="middle" fontSize={fontPx.xs} fill={color.foreground}>
-                {corr ? `✓ ${formatUnit(r.value, axis.unit)}` : `${r.code} ${formatUnit(r.value, axis.unit)}`}
+                {r.text}
               </text>
             </g>
           );

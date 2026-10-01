@@ -29,5 +29,10 @@ export const CODES = {
   GROSS: { label: 'Gross, costs ignored', family: 'feasibility' },
   MISS: { label: 'Missing costs', family: 'feasibility' },
   CLAIM: { label: 'Took the claim at face value', family: 'feasibility' },
+  INTONLY: { label: 'Gave the interest, not the balance', family: 'arithmetic' },
+  COMP: { label: 'Compounded when interest is paid out', family: 'compounding' },
+  NOINT: { label: 'No interest expected', family: 'compounding' },
+  SAMEASCOMP: { label: 'Simple and compound treated the same', family: 'compounding' },
+  NOTIME: { label: 'Time horizon ignored', family: 'compounding' },
 } as const;
 export type Code = keyof typeof CODES;

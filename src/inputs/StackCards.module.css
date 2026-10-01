@@ -1,0 +1,100 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.areaLabel {
+  color: var(--color-muted-foreground);
+}
+.pool,
+.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.stackBox {
+  min-height: 96px;
+  padding: var(--space-3);
+  border: var(--border-width) dashed var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-tertiary-soft);
+}
+.empty {
+  color: var(--color-muted-foreground);
+  text-align: center;
+  padding: var(--space-5) 0;
+}
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  box-shadow: var(--shadow-active);
+  text-align: left;
+  font-weight: var(--weight-semibold);
+}
+.pick {
+  cursor: pointer;
+}
+.pick:hover {
+  background: var(--color-muted);
+}
+.pick:focus-visible,
+.remove:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-ring);
+}
+.label {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.amount {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.grip {
+  flex: none;
+  width: 22px;
+  color: var(--color-muted-foreground);
+  cursor: grab;
+  touch-action: none;
+  text-align: center;
+  letter-spacing: -2px;
+}
+.order {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-tertiary);
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-xs);
+}
+.remove {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -6px -8px -6px 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.note {
+  color: var(--color-muted-foreground);
+}

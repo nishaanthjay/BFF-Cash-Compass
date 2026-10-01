@@ -8,11 +8,16 @@ import { IconBadge } from '../../components/IconBadge';
 import { CodeBar, CountBars, Funnel, ShareBar } from '../../charts/Bars';
 import { DotPlot, type Selection } from '../../charts/DotPlot';
 import { Calibration, Dumbbell } from '../../charts/Ratings';
+import { CardHeat, Donut, PairedPlot, QuadGrid, SplitBars, TileGrid, Waterfall } from '../../charts/Misc';
+import { Scatter } from '../../charts/Scatter';
+import { Spaghetti } from '../../charts/Spaghetti';
 import { correctOf, getProblem } from '../../items';
 import { FAMILY_LABELS } from '../../items/families';
 import type { ChartSpec, Problem } from '../../items/types';
-import { ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows } from '../../lib/analysis';
+import { cardFrequency, choiceSplit, curvePoints, curveShape, joinSteps, pairedValues, quadrantCounts, ratingPairs, reached, receiptMismatch, shadeMismatch, stepRows, vsReference, waterfall } from '../../lib/analysis';
+import { median } from '../../lib/logError';
 import { formatCode } from '../../lib/studentCode';
+import { formatUnit } from '../../lib/format';
 import { PasscodeGate } from '../facilitator/PasscodeGate';
 import { DashboardShell } from './DashboardShell';
 import { useDashboard, type Dashboard } from './useDashboard';
@@ -109,7 +114,7 @@ function ItemChart({ p, c, d, scope, onSelect }: { p: Problem; c: ChartSpec; d: 
   switch (c.type) {
     case 'dots': {
       const st = stepOf(c.step);
-      const axis = c.axis ?? (st.input.type === 'numberLine' ? st.input : null);
+      const axis = c.axis ?? (st.input.type === 'numberLine' || st.input.type === 'jar' ? st.input : null);
       const rows = stepRows(data, p.id, c.step);
       const vals = rows.filter((r) => r.raw_value !== null).map((r) => r.raw_value as number);
       const fallback = axis ?? { min: 0, max: Math.max(1, ...vals, correctOf(st) ?? 0) * 1.15, scale: 'linear' as const, unit: 'number' in st.input ? 'count' : 'usd' };
@@ -160,6 +165,125 @@ function ItemChart({ p, c, d, scope, onSelect }: { p: Problem; c: ChartSpec; d: 
         </ChartCard>
       );
     }
+    case 'spaghetti': {
+      const rows = stepRows(data, p.id, c.step);
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope} tone="featured">
+          <Spaghetti curves={curvePoints(rows)} start={c.start} xMax={c.xMax} yMax={c.yMax} midX={c.midX} linear={c.linear} truth={c.truth} unit={c.unit} blank={Math.max(0, total - rows.length)} />
+        </ChartCard>
+      );
+    }
+    case 'curveShapes': {
+      const pts = curvePoints(stepRows(data, p.id, c.step));
+      const count = { straight: 0, convex: 0, concave: 0, 'no midpoint': 0 };
+      for (const q of pts) count[curveShape(c.start, q.y5, q.y10)]++;
+      return (
+        <ChartCard title={c.title} subtitle={`Decided by the year-${c.midX} point against a straight line.`} n={pts.length} date={scope}>
+          <Donut
+            slices={[
+              { label: 'Straight (linear thinking)', n: count.straight, tone: 'wrong' },
+              { label: 'Curves up (compounding-like)', n: count.convex, tone: 'corr' },
+              { label: 'Curves down (levels off)', n: count.concave, tone: 'unk' },
+              { label: `No year-${c.midX} point`, n: count['no midpoint'], tone: 'neutral' },
+            ]}
+          />
+        </ChartCard>
+      );
+    }
+    case 'scatter': {
+      const ys = stepOf(c.y.step);
+      const yAxis = c.y.axis ?? (ys.input.type === 'numberLine' || ys.input.type === 'jar' ? ys.input : { min: 0, max: 100, scale: 'linear' as const, unit: 'usd' as const });
+      const xs = stepOf(c.x.step);
+      const xAxis = c.x.axis ?? (xs.input.type === 'numberLine' || xs.input.type === 'jar' ? xs.input : yAxis);
+      const pts = joinSteps(data, p.id, c.x.step, c.y.step, rc, c.belief);
+      return (
+        <ChartCard title={c.title} subtitle={c.note} n={pts.length} date={scope}>
+          <Scatter
+            points={pts}
+            x={c.x.mode === 'correct' ? { kind: 'cat', labels: ['Step wrong', 'Step right'] } : { kind: 'num', axis: xAxis }}
+            y={yAxis}
+            diagonal={c.diagonal}
+            refX={c.refX}
+            refY={c.refY}
+            showBelief={!!c.belief}
+            xLabel={`${xs.label}${c.x.mode === 'correct' ? ' (right or wrong)' : ''}`}
+            yLabel={ys.label}
+            showCodes={!d.projector}
+          />
+        </ChartCard>
+      );
+    }
+    case 'tileGrid': {
+      const rows = stepRows(data, p.id, c.step);
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope}>
+          <TileGrid rows={rows} rc={rc} showCodes={!d.projector} minCell={d.minCell} note={c.note} />
+        </ChartCard>
+      );
+    }
+    case 'vsRef': {
+      const rows = stepRows(data, p.id, c.step);
+      const r = vsReference(rows, c.ref, c.tolPct);
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope}>
+          <CountBars
+            items={[
+              { label: c.labels[0], n: r.below, tone: 'wrong' },
+              { label: `${c.labels[1]} (${formatUnit(c.ref, c.unit)})`, n: r.exact, tone: 'corr' },
+              { label: c.labels[2], n: r.above, tone: 'unk' },
+            ]}
+            total={r.below + r.exact + r.above}
+          />
+        </ChartCard>
+      );
+    }
+    case 'paired': {
+      const pairs = pairedValues(data, p.id, c.a, c.b);
+      return (
+        <ChartCard title={c.title} n={pairs.length} date={scope}>
+          <PairedPlot pairs={pairs} axis={c.axis} showCodes={!d.projector} note={c.note} />
+        </ChartCard>
+      );
+    }
+    case 'choiceSplit': {
+      const st = stepOf(c.step);
+      const opts = st.input.type === 'choice' ? st.input.options : [];
+      const g = choiceSplit(data, p.id, c.step, c.by);
+      return (
+        <ChartCard title={c.title} n={stepRows(data, p.id, c.step).length} date={scope}>
+          <SplitBars groups={g} options={opts} labels={{ yes: c.by.yes, no: c.by.no }} total={stepRows(data, p.id, c.step).length} />
+        </ChartCard>
+      );
+    }
+    case 'cardHeat': {
+      const st = stepOf(c.step);
+      const cards = st.input.type === 'stack' ? st.input.cards : [];
+      const rows = stepRows(data, p.id, c.step);
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope} tone="featured">
+          <CardHeat stats={cardFrequency(rows, cards.map((x) => x.id))} cards={cards} total={rows.length} />
+        </ChartCard>
+      );
+    }
+    case 'waterfall': {
+      const rows = stepRows(data, p.id, c.stack);
+      const w = waterfall(rows, c.cards);
+      const typed = median(stepRows(data, p.id, c.profit).map((r) => r.raw_value).filter((v): v is number => v !== null));
+      return (
+        <ChartCard title={c.title} n={rows.length} date={scope} tone="featured">
+          <Waterfall steps={w.steps} cards={c.cards} implied={w.implied} correct={c.correct} typedMedian={typed} n={rows.length} />
+        </ChartCard>
+      );
+    }
+    case 'quadrants': {
+      const q = quadrantCounts(data, p.id, c.x, c.belief);
+      const n = q.goodBelieves + q.goodDoubts + q.badBelieves + q.badDoubts;
+      return (
+        <ChartCard title={c.title} subtitle={`“Compounds well” = Step 1 balance within ${c.x.withinPct}% of the true value.`} n={n} date={scope}>
+          <QuadGrid q={q} labels={{ good: c.x.good, bad: c.x.bad, yes: c.belief.yes, no: c.belief.no }} suppressBelow={d.minCell} />
+        </ChartCard>
+      );
+    }
     case 'choiceBar': {
       const rows = stepRows(data, p.id, c.step);
       const st = stepOf(c.step);
@@ -167,7 +291,7 @@ function ItemChart({ p, c, d, scope, onSelect }: { p: Problem; c: ChartSpec; d: 
       return (
         <ChartCard title={c.title} n={rows.length} date={scope}>
           <CountBars
-            items={opts.map((o) => ({ label: o.label, n: rows.filter((r) => (r.value?.choice as string[] | undefined)?.includes(o.id)).length, tone: st.correctChoice?.includes(o.id) ? 'corr' : 'none' }))}
+            items={opts.map((o) => ({ label: o.label, n: rows.filter((r) => (r.value?.choice as string[] | undefined)?.includes(o.id)).length, tone: st.correctChoice?.includes(o.id) ? ('corr' as const) : ('neutral' as const) }))}
             total={rows.length}
           />
         </ChartCard>

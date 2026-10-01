@@ -168,3 +168,164 @@ export function histogram(values: number[], min: number, max: number, bins: numb
   }
   return out;
 }
+
+// ───────────── Stage 2 helpers ─────────────
+
+export const studentKey = (r: { session_id: string; student_code: string }) => `${r.session_id}:${r.student_code}`;
+
+export interface CurvePts {
+  key: string;
+  code: string;
+  y5: number | null;
+  y10: number;
+}
+
+/** Year-5 / year-10 points from a curve step (y10 falls back to raw_value). */
+export function curvePoints(rows: ResponseRow[]): CurvePts[] {
+  const out: CurvePts[] = [];
+  for (const r of rows) {
+    const y10 = typeof r.value?.y10 === 'number' ? (r.value.y10 as number) : r.raw_value;
+    if (y10 === null || y10 === undefined) continue;
+    out.push({ key: studentKey(r), code: r.student_code, y5: typeof r.value?.y5 === 'number' ? (r.value.y5 as number) : null, y10 });
+  }
+  return out;
+}
+
+export type CurveShape = 'straight' | 'convex' | 'concave' | 'no midpoint';
+
+/**
+ * Shape from the year-5 point against the straight line between start and year 10.
+ * Within ±4% of the straight-line midpoint = straight; below = convex (curving up, compounding-like);
+ * above = concave. Without a year-5 point the shape can't be told.
+ */
+export function curveShape(start: number, y5: number | null, y10: number, tolFrac = 0.04): CurveShape {
+  if (y5 === null) return 'no midpoint';
+  const mid = (start + y10) / 2;
+  if (Math.abs(y5 - mid) <= Math.abs(mid) * tolFrac) return 'straight';
+  return y5 < mid ? 'convex' : 'concave';
+}
+
+export interface CardStat {
+  id: string;
+  n: number;
+  share: number;
+  /** Mean 1-based position in the stack among students who stacked it. */
+  avgPos: number | null;
+}
+
+/** How often each card was stacked (and where). `rows` = one stack answer per student. */
+export function cardFrequency(rows: ResponseRow[], ids: string[]): CardStat[] {
+  const stacks = rows.map((r) => (r.value?.choice as string[] | undefined) ?? []);
+  return ids.map((id) => {
+    const pos = stacks.map((s) => s.indexOf(id)).filter((i) => i >= 0);
+    return { id, n: pos.length, share: stacks.length ? pos.length / stacks.length : 0, avgPos: pos.length ? pos.reduce((a, b) => a + b + 1, 0) / pos.length : null };
+  });
+}
+
+export interface WaterfallStep {
+  id: string;
+  label: string;
+  share: number;
+  /** Running total after this card, weighting each card by the share of students who stacked it. */
+  classEnd: number;
+  correctEnd: number;
+}
+
+/** Class-average vs correct profit breakdown (spec F5). Unstacked cards show up as a gap. */
+export function waterfall(rows: ResponseRow[], cards: { id: string; label: string; amount: number; sign: 1 | -1 }[]): { steps: WaterfallStep[]; implied: number } {
+  const freq = new Map(cardFrequency(rows, cards.map((c) => c.id)).map((f) => [f.id, f.share]));
+  let cls = 0;
+  let cor = 0;
+  const steps = cards.map((c) => {
+    const share = freq.get(c.id) ?? 0;
+    cls += c.sign * c.amount * share;
+    cor += c.sign * c.amount;
+    return { id: c.id, label: c.label, share, classEnd: cls, correctEnd: cor };
+  });
+  return { steps, implied: cls };
+}
+
+export interface XY {
+  key: string;
+  code: string;
+  x: number | null;
+  y: number | null;
+  belief?: boolean;
+  /** correct / wrong flag on the x step (for mode: 'correct') */
+  xCorrect?: boolean;
+}
+
+/** Join two steps per student (and optionally a belief rating) for scatter plots. */
+export function joinSteps(data: ExportData, item: string, xStep: string, yStep: string, rc: RecodeMap, beliefStep?: { step: string; min: number }): XY[] {
+  const xs = new Map(stepRows(data, item, xStep).map((r) => [studentKey(r), r]));
+  const bs = beliefStep ? new Map(stepRows(data, item, beliefStep.step).map((r) => [studentKey(r), r])) : null;
+  const out: XY[] = [];
+  for (const y of stepRows(data, item, yStep)) {
+    const x = xs.get(studentKey(y));
+    if (!x) continue;
+    const b = bs?.get(studentKey(y));
+    out.push({
+      key: studentKey(y),
+      code: y.student_code,
+      x: x.raw_value,
+      y: y.raw_value,
+      xCorrect: codesOf(x, rc).includes('CORR'),
+      belief: b && b.raw_value !== null && beliefStep ? b.raw_value >= beliefStep.min : undefined,
+    });
+  }
+  return out;
+}
+
+/** Counts below / about / above a reference value (±tol%). */
+export function vsReference(rows: ResponseRow[], ref: number, tolPct: number): { below: number; exact: number; above: number } {
+  const t = Math.abs(ref) * (tolPct / 100) + 0.005;
+  let below = 0;
+  let exact = 0;
+  let above = 0;
+  for (const r of rows) {
+    if (r.raw_value === null) continue;
+    if (Math.abs(r.raw_value - ref) <= t) exact++;
+    else if (r.raw_value < ref) below++;
+    else above++;
+  }
+  return { below, exact, above };
+}
+
+/** 2×2: did the student's x answer land within ±withinPct of ref, and do they believe (rating ≥ min)? */
+export function quadrantCounts(data: ExportData, item: string, x: { step: string; ref: number; withinPct: number }, belief: { step: string; min: number }) {
+  const bs = new Map(stepRows(data, item, belief.step).map((r) => [studentKey(r), r.raw_value]));
+  const q = { goodBelieves: 0, goodDoubts: 0, badBelieves: 0, badDoubts: 0 };
+  for (const r of stepRows(data, item, x.step)) {
+    const b = bs.get(studentKey(r));
+    if (r.raw_value === null || b === undefined || b === null) continue;
+    const good = Math.abs(r.raw_value - x.ref) <= x.ref * (x.withinPct / 100);
+    const believes = b >= belief.min;
+    if (good) q[believes ? 'goodBelieves' : 'goodDoubts']++;
+    else q[believes ? 'badBelieves' : 'badDoubts']++;
+  }
+  return q;
+}
+
+/** Paired step values per student (e.g. S7 Step 1 → Step 3). */
+export function pairedValues(data: ExportData, item: string, a: string, b: string): { key: string; code: string; a: number; b: number }[] {
+  const as = new Map(stepRows(data, item, a).map((r) => [studentKey(r), r]));
+  const out: { key: string; code: string; a: number; b: number }[] = [];
+  for (const rb of stepRows(data, item, b)) {
+    const ra = as.get(studentKey(rb));
+    if (ra && ra.raw_value !== null && rb.raw_value !== null) out.push({ key: studentKey(rb), code: rb.student_code, a: ra.raw_value, b: rb.raw_value });
+  }
+  return out;
+}
+
+/** Split choice answers by whether another step landed within ±withinPct of ref. */
+export function choiceSplit(data: ExportData, item: string, step: string, by: { step: string; ref: number; withinPct: number }) {
+  const bs = new Map(stepRows(data, item, by.step).map((r) => [studentKey(r), r.raw_value]));
+  const groups = { near: {} as Record<string, number>, far: {} as Record<string, number> };
+  for (const r of stepRows(data, item, step)) {
+    const v = bs.get(studentKey(r));
+    if (v === undefined || v === null) continue;
+    const g = Math.abs(v - by.ref) <= by.ref * (by.withinPct / 100) ? groups.near : groups.far;
+    for (const c of (r.value?.choice as string[] | undefined) ?? []) g[c] = (g[c] ?? 0) + 1;
+  }
+  return groups;
+}

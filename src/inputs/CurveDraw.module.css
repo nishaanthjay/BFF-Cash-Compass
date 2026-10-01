@@ -1,0 +1,72 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.pick {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.pickBtn {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-card);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+.pickBtn[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+.pickBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-ring);
+}
+.graph {
+  position: relative;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+}
+.graph:focus-visible {
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: var(--shadow-focus);
+}
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.tickLabel {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.axisTitle {
+  fill: var(--color-foreground);
+  font-family: var(--font-body);
+  font-weight: var(--weight-bold);
+}
+.hint {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+}
+.pointLabel {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  color: var(--color-muted-foreground);
+}
+.clear {
+  align-self: flex-start;
+}

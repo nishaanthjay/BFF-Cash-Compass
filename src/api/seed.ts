@@ -31,6 +31,8 @@ const WORKSHOPS: { chapter: string; cohort: string; n: number; daysAgo: number; 
   { chapter: 'NC027', cohort: 'Today · Grade 7', n: 21, daysAgo: 0, modules: ['skill', 'feasibility', 'hybrid'], open: true },
 ];
 
+const GENERIC_TEXT = ['Because the interest builds on itself.', 'I wasn’t sure.', 'It seems too good to be true.', 'I would ask someone I trust.'];
+
 const SURVIVOR_TEXT: [string, string][] = [
   ['People who lost money don’t post about it.', 'present'],
   ['You only see the winners online.', 'present'],
@@ -117,17 +119,48 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
           let choice: string[] | undefined;
           let text: string | null = null;
           let tag: string | null = null;
+          let extra: Record<string, unknown> | null = null;
+          let moved = false; // stack reordered by dragging
           const i = step.input;
+          const difficulty = ((hashString(p.id) % 100) / 100 - 0.5) * 1.6;
           if (i.type === 'dial') raw = straightLiner ? 5 : step.kind === 'rating_post' ? Math.min(5, Math.max(1, Math.round(gut - Math.max(0, 0.8 + skill * 0.9 + normal(r) * 0.6)))) : gut;
-          else if (i.type === 'choice') choice = [i.options[Math.floor(r() * i.options.length)].id];
-          else if (i.type === 'text') {
-            if (r() < 0.8) [text, tag] = SURVIVOR_TEXT[Math.min(SURVIVOR_TEXT.length - 1, Math.floor(r() * 3 + (skill < 0 ? 3 : 0) * r()))];
-          } else raw = simulateNumber(r, step, prior, skill, ((hashString(p.id) % 100) / 100 - 0.5) * 1.6);
+          else if (i.type === 'choice') {
+            const ids = i.options.map((o) => o.id);
+            if (i.multi) {
+              choice = ids.filter(() => r() < 0.45);
+              if (!choice.length) choice = [ids[Math.floor(r() * ids.length)]];
+            } else if (step.correctChoice && r() < 1 / (1 + Math.exp(-(0.2 + 1.1 * skill - difficulty)))) choice = [...step.correctChoice];
+            else choice = [ids[Math.floor(r() * ids.length)]];
+          } else if (i.type === 'stack') {
+            const real = i.cards.filter((c) => !c.distractor);
+            const chosen: string[] = [];
+            real.forEach((c, idx) => {
+              if (r() < Math.min(0.97, Math.max(0.12, 0.93 - 0.11 * idx + 0.14 * skill))) chosen.push(c.id);
+            });
+            for (const c of i.cards) if (c.distractor && r() < 0.12) chosen.push(c.id);
+            if (!chosen.length) chosen.push(real[0].id);
+            for (let k = chosen.length - 1; k > 0; k--) if (r() < 0.2) [chosen[k], chosen[k - 1]] = [chosen[k - 1], chosen[k]], (moved = true);
+            choice = chosen;
+          } else if (i.type === 'text') {
+            if (r() < 0.8) {
+              if (step.id === 'why') [text, tag] = SURVIVOR_TEXT[Math.min(SURVIVOR_TEXT.length - 1, Math.floor(r() * 3 + (skill < 0 ? 3 : 0) * r()))];
+              else text = GENERIC_TEXT[Math.floor(r() * GENERIC_TEXT.length)];
+            }
+          } else {
+            raw = simulateNumber(r, step, prior, skill, difficulty);
+            if (i.type === 'curve' && raw !== null) {
+              const lin = (step.codes ?? []).some((c) => c.code === 'LIN' && Math.abs(raw! - c.value) <= c.value * 0.02);
+              const mid = lin ? (i.start + raw) / 2 : Math.sqrt(i.start * Math.max(1, raw));
+              const y5 = r() < 0.4 ? null : Math.max(0, Number((mid * (1 + (r() - 0.5) * 0.05)).toFixed(0)));
+              extra = { y5, y10: raw };
+            }
+          }
           const lockMs = speeder ? 1500 + r() * 1500 : (step.kind === 'cold' ? 9000 : 14000) + r() * 30000;
+          const visual = i.type === 'numberLine' || i.type === 'jar' || i.type === 'curve' || i.type === 'shade';
           const method: InputMethod | null =
-            i.type === 'number' || i.type === 'text' ? 'typed' : i.type === 'dial' || i.type === 'choice' ? 'tapped' : r() < 0.6 ? pref : pickWeighted(r, [['typed', 1], ['dragged', 1], ['tapped', 1]]);
+            i.type === 'number' || i.type === 'text' ? 'typed' : i.type === 'dial' || i.type === 'choice' ? 'tapped' : i.type === 'stack' ? (moved ? 'dragged' : 'tapped') : visual ? (r() < 0.6 ? pref : pickWeighted(r, [['typed', 1], ['dragged', 1], ['tapped', 1]])) : 'typed';
           t += lockMs + 1500;
-          const extra = i.type === 'shade' && raw !== null ? { fraction: Math.min(1, Math.round((i.typed === 'separate' ? (r() < 0.8 ? raw / i.whole : r()) : raw / i.whole) * 100) / 100) } : null;
+          if (i.type === 'shade' && raw !== null) extra = { fraction: Math.min(1, Math.round((i.typed === 'separate' ? (r() < 0.8 ? raw / i.whole : r()) : raw / i.whole) * 100) / 100) };
           const answer: AnswerRow = {
             answer_id: fakeUuid(r),
             session_id: session.id,
@@ -137,7 +170,7 @@ export function buildSeed(now = Date.now(), problems: Problem[] = ALL_PROBLEMS):
             step_id: step.id,
             form_version: null,
             raw_value: raw,
-            value: choice ? { choice } : extra,
+            value: choice || extra ? { ...(choice ? { choice } : {}), ...(extra ?? {}) } : null,
             input_method: method,
             strategy_codes: classify(step, raw, prior, choice) as Code[],
             correct_value: correctOf(step, prior),

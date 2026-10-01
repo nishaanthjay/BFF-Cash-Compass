@@ -42,6 +42,43 @@ export function ScenarioCard({ scenario, own, activeStep }: { scenario: Scenario
           })}
         </div>
       );
+    case 'situation':
+      return (
+        <div className={s.situation}>
+          <p className={s.situationText}>{scenario.text}</p>
+          {scenario.facts && (
+            <dl className={s.facts}>
+              {scenario.facts.map((f) => (
+                <div key={f.label} style={{ display: 'contents' }}>
+                  <dt>{f.label}</dt>
+                  <dd style={{ margin: 0 }}>{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      );
+    case 'jars':
+      return (
+        <div className={s.situation}>
+          <p className={s.situationText}>{scenario.text}</p>
+          <div className={s.jars}>
+            {scenario.labels.map((l, i) => {
+              const from = scenario.fromSteps[i];
+              const v = from ? own[from] : null;
+              return (
+                <div key={l} className={s.jarCard} data-active={from === activeStep}>
+                  <span className="eyebrow">{l}</span>
+                  <svg viewBox="0 0 60 70" className={s.jarSvg} aria-hidden>
+                    <path d="M12 6 L12 54 Q12 64 22 64 L38 64 Q48 64 48 54 L48 6" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                  </svg>
+                  <span className={v === null || v === undefined ? s.blank : s.jarValue}>{v === null || v === undefined ? (from ? '______' : '') : formatUnit(v, 'usd')}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
     case 'claim':
       return (
         <figure className={s.claim} style={{ margin: 0 }}>

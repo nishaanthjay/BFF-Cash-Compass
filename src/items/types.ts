@@ -28,9 +28,20 @@ export interface AxisSpec {
   unit: Unit;
 }
 
+export interface StackCard {
+  id: string;
+  label: string;
+  /** Printed on the card, e.g. "$6,000" or "8% of the sale price". Never a verdict. */
+  amount?: string;
+  distractor?: boolean;
+}
+
 export type InputSpec =
   | { type: 'number'; unit: Unit } // typed only (keypad + native input)
   | ({ type: 'numberLine' } & AxisSpec) // C1
+  | ({ type: 'jar' } & AxisSpec) // C5 (fill line on a jar)
+  | { type: 'curve'; xMax: number; yMax: number; start: number; midX: number; unit: Unit } // C2
+  | { type: 'stack'; cards: StackCard[]; poolLabel: string; areaLabel: string } // C4
   | { type: 'dial' } // C3 believability 1–5
   | { type: 'shade'; whole: number; unit: Unit; readout: 'usd' | 'pct'; typed?: 'linked' | 'separate' } // C7
   | { type: 'choice'; options: { id: string; label: string }[]; multi?: boolean; other?: boolean }
@@ -39,6 +50,8 @@ export type InputSpec =
 // ───────────── scenario layouts (presentation data) ─────────────
 
 export type Scenario =
+  | { layout: 'situation'; text: string; facts?: { label: string; value: string }[] }
+  | { layout: 'jars'; text: string; labels: string[]; fromSteps: (string | null)[] }
   | { layout: 'priceTag'; item: string; price: number; badges: string[] }
   | { layout: 'receipt'; title: string; lines: { label: string; value?: number; fromStep?: string }[] }
   | { layout: 'claim'; who: string; source: 'post' | 'chat' | 'message' | 'speech'; claim: string; facts?: { label: string; value: string }[] };
@@ -70,8 +83,25 @@ export interface Step {
   label: string;
 }
 
+export interface ScatterAxis {
+  step: string;
+  /** 'correct' plots whether the step was correct (categorical) instead of its value. */
+  mode?: 'value' | 'correct';
+  axis?: AxisSpec;
+}
+
 export type ChartSpec =
   | { type: 'dots'; step: string; title: string; axis?: AxisSpec; primary?: boolean }
+  | { type: 'spaghetti'; step: string; title: string; start: number; xMax: number; yMax: number; midX: number; linear: [number, number]; truth: [number, number]; unit: Unit }
+  | { type: 'curveShapes'; step: string; title: string; start: number; midX: number }
+  | { type: 'scatter'; title: string; x: ScatterAxis; y: ScatterAxis; diagonal?: boolean; note?: string; refX?: number; refY?: number; belief?: { step: string; min: number } }
+  | { type: 'tileGrid'; step: string; title: string; note: string }
+  | { type: 'vsRef'; step: string; title: string; ref: number; tolPct: number; labels: [string, string, string]; unit: Unit }
+  | { type: 'paired'; a: string; b: string; title: string; axis: AxisSpec; note: string }
+  | { type: 'choiceSplit'; step: string; title: string; by: { step: string; ref: number; withinPct: number; yes: string; no: string } }
+  | { type: 'cardHeat'; step: string; title: string }
+  | { type: 'waterfall'; stack: string; profit: string; title: string; cards: { id: string; label: string; amount: number; sign: 1 | -1 }[]; correct: number }
+  | { type: 'quadrants'; title: string; x: { step: string; ref: number; withinPct: number; good: string; bad: string }; belief: { step: string; min: number; yes: string; no: string } }
   | { type: 'codeBar'; steps: string[]; title: string }
   | { type: 'funnel'; steps: string[]; title: string }
   | { type: 'shareBar'; step: string; title: string; buckets: { label: string; codes: Code[] }[] }

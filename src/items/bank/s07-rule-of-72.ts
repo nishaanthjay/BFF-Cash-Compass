@@ -1,0 +1,91 @@
+import { defineProblem } from '../types';
+
+/** DRAFT wording, from the Interaction & Admin Visual Spec, S7. $1,000 at 6% a year. */
+export default defineProblem({
+  id: 'S7',
+  slug: 'rule-of-72',
+  title: 'Rule of 72 Race',
+  version: 1,
+  active: true,
+  draft: true,
+  module: 'skill',
+  deca_category: 'investing',
+  families: ['compounding'],
+  scenario: {
+    layout: 'situation',
+    text: 'You put $1,000 in an account that pays 6% interest a year. You never add or take out money.',
+    facts: [
+      { label: 'Start', value: '$1,000' },
+      { label: 'Interest', value: '6% a year' },
+    ],
+  },
+  order: { notAdjacent: ['S8'] },
+  steps: [
+    {
+      id: 's1',
+      kind: 'cold',
+      label: 'Step 1 · years to double',
+      prompt: 'About how many years until the $1,000 becomes $2,000? Tap the timeline.',
+      input: { type: 'numberLine', min: 0, max: 50, scale: 'linear', unit: 'years' },
+      correct: 11.9,
+      codes: [{ code: 'LIN', value: 16.7 }],
+    },
+    {
+      id: 's2',
+      kind: 'control',
+      label: 'Step 2 · interest in year 1',
+      prompt: 'How much interest does the account earn in the first year?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 60,
+      codes: [
+        { code: 'PAD', value: 6 },
+        { code: 'DEC', value: 600 },
+      ],
+    },
+    {
+      id: 's3',
+      kind: 'guided',
+      label: 'Step 3 · doubling with simple interest',
+      prompt: 'Now say the bank only ever pays interest on the first $1,000 (no interest on interest). About how many years until it becomes $2,000?',
+      input: { type: 'numberLine', min: 0, max: 50, scale: 'linear', unit: 'years' },
+      correct: 16.67,
+      codes: [{ code: 'SAMEASCOMP', value: 11.9 }],
+    },
+    {
+      id: 's4a',
+      kind: 'guided',
+      label: 'Step 4a · balance after 24 years',
+      prompt: 'With interest on interest (the real account), how much is in it after 24 years? You can use a calculator.',
+      input: { type: 'number', unit: 'usd' },
+      calculator: true,
+      correct: 4048.93,
+      codes: [{ code: 'LIN', value: 2440 }],
+    },
+    {
+      id: 's4b',
+      kind: 'guided',
+      label: 'Step 4b · balance after 36 years',
+      prompt: 'And after 36 years? You can use a calculator.',
+      input: { type: 'number', unit: 'usd' },
+      calculator: true,
+      correct: 8147.25,
+      codes: [{ code: 'LIN', value: 3160 }],
+    },
+    {
+      id: 's5',
+      kind: 'guided',
+      label: 'Step 5 · rate to double in 6 years',
+      prompt: 'About what yearly interest rate would double money in 6 years?',
+      input: { type: 'number', unit: 'percent' },
+      correct: 12.25,
+      correctTolPct: 2.5, // the Rule of 72 gives 12
+      codes: [{ code: 'LIN', value: 16.67 }],
+    },
+  ],
+  admin: [
+    { type: 'dots', step: 's1', title: 'Step 1: years to double (6%)', primary: true },
+    { type: 'paired', a: 's1', b: 's3', title: 'Does each student separate compound from simple?', axis: { min: 0, max: 50, scale: 'linear', unit: 'years' }, note: 'One row per student: Step 1 → Step 3. A short line means they see little difference.' },
+    { type: 'funnel', steps: ['s1', 's2', 's3', 's4a', 's4b', 's5'], title: 'Where accuracy drops, step by step' },
+  ],
+  decision: 'If Step 1 and Step 3 cluster together near 16–17, the group doesn’t separate simple from compound growth.',
+});

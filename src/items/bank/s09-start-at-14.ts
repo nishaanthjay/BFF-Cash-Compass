@@ -1,0 +1,96 @@
+import { defineProblem } from '../types';
+
+/** DRAFT wording, from the Interaction & Admin Visual Spec, S9. Each invests $2,000 once at 7%, check at 64. */
+export default defineProblem({
+  id: 'S9',
+  slug: 'start-at-14',
+  title: 'Start at 14 or 24?',
+  version: 1,
+  active: true,
+  draft: true,
+  module: 'skill',
+  deca_category: 'investing',
+  families: ['compounding'],
+  scenario: {
+    layout: 'situation',
+    text: 'Ben puts $2,000 in an account when he is 14. Aisha puts $2,000 in a different account when she is 24. Both accounts pay 7% a year. Neither adds more money. They both check their balances at age 64.',
+    facts: [
+      { label: 'Ben', value: '$2,000 at age 14' },
+      { label: 'Aisha', value: '$2,000 at age 24' },
+      { label: 'Interest', value: '7% a year' },
+    ],
+  },
+  steps: [
+    {
+      id: 's1',
+      kind: 'cold',
+      label: 'Step 1 · how many times bigger',
+      prompt: 'At age 64, about how many times bigger is Ben’s balance than Aisha’s? Tap the line.',
+      input: { type: 'numberLine', min: 0.5, max: 5, scale: 'log', unit: 'times' },
+      correct: 1.97,
+      codes: [{ code: 'NOTIME', value: 1, tolPct: 12 }],
+    },
+    {
+      id: 's1b',
+      kind: 'cold',
+      label: 'Step 1b · dollars bigger',
+      prompt: 'About how many more dollars does Ben have than Aisha at age 64?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 28965,
+      codes: [{ code: 'NOTIME', value: 1400 }],
+    },
+    {
+      id: 's2',
+      kind: 'control',
+      label: 'Step 2 · balance after 1 year',
+      prompt: 'How much does $2,000 become after 1 year at 7%?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 2140,
+      codes: [{ code: 'INTONLY', value: 140 }],
+    },
+    {
+      id: 's3a',
+      kind: 'guided',
+      label: 'Step 3a · years to double',
+      prompt: 'About how many years until money doubles at 7% a year?',
+      input: { type: 'number', unit: 'years' },
+      correct: 10.24,
+      correctTolPct: 2,
+      codes: [{ code: 'LIN', value: 14.29 }],
+    },
+    {
+      id: 's3b',
+      kind: 'choice',
+      label: 'Step 3b · do 10 extra years matter?',
+      prompt: 'Do 10 extra years make a big difference to the final balance?',
+      input: {
+        type: 'choice',
+        options: [
+          { id: 'yes', label: 'Yes, a big difference' },
+          { id: 'no', label: 'No, only a small difference' },
+        ],
+      },
+      correctChoice: ['yes'],
+    },
+    {
+      id: 's4',
+      kind: 'guided',
+      label: 'Step 4 · what Ben needs to match',
+      prompt: 'Ben starts at 14. How much would Ben need to put in at 14 to end up with the same as Aisha at 64?',
+      input: { type: 'number', unit: 'usd' },
+      correct: 1016.7,
+      codes: [{ code: 'NOTIME', value: 2000 }],
+    },
+  ],
+  admin: [
+    { type: 'dots', step: 's1', title: 'Step 1: how many times bigger (log scale)', primary: true },
+    {
+      type: 'choiceSplit',
+      step: 's3b',
+      title: 'Do 10 extra years matter? By Step 1 accuracy',
+      by: { step: 's1', ref: 1.967, withinPct: 25, yes: 'Step 1 within 25% of true', no: 'Step 1 further off' },
+    },
+    { type: 'codeBar', steps: ['s1', 's1b', 's2', 's3a', 's4'], title: 'Where the error shows up, by step' },
+  ],
+  decision: 'Many answers near 1× mean students underweight time horizon.',
+});

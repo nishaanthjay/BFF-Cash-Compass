@@ -1,0 +1,62 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+.jarBox {
+  position: relative;
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+.jarBox:focus-visible {
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: var(--shadow-focus);
+}
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.tickLabel {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  fill: var(--color-muted-foreground);
+  font-family: var(--font-body);
+}
+.bubble {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-variant-numeric: tabular-nums;
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.note {
+  color: var(--color-muted-foreground);
+}
+@media (max-width: 420px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.big {
+  font-size: var(--text-2xl);
+}

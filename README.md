@@ -1,12 +1,12 @@
 # BFFA Money Check
 
-> **Rebuild in progress: questionnaire v3, Stage 1 of 4.** The app is being rebuilt to the *Interaction and Admin Visual
+> **Rebuild in progress: questionnaire v3, Stage 2 of 4.** The app is being rebuilt to the *Interaction and Admin Visual
 > Spec*. Done so far:
 > - multi-step problems, with no feedback and answers locked on confirm;
-> - inputs C1/C3/C7;
+> - inputs C1, C2 (draw a curve), C3, C4 (stack cards), C5 (jar), C7;
 > - anonymous student codes;
 > - per-step instrumentation and auto strategy codes;
-> - the gap dashboard, with per-item charts for S1, S2 and F2 (wording is DRAFT);
+> - the gap dashboard, with per-item charts for 11 problems: S1, S2, S5–S9, F1, F2, F5, H1 (wording is DRAFT);
 > - migration `0003_questionnaire.sql`.
 >
 > Some sections below still describe the earlier single-estimate version and get rewritten in Stage 4.
@@ -16,7 +16,7 @@ Every question is a realistic money scenario, and the student types a **numeric 
 The size and direction of the gap between the estimate and the true value
 (log error = `ln(estimate ÷ truth)`) shows where the misconceptions are.
 
-Vite + React + TypeScript, Supabase (free tier), Framer Motion, Lucide and Recharts. The visual system is in [DESIGN.md](DESIGN.md).
+Vite + React + TypeScript, Supabase (free tier), Framer Motion, Lucide and hand-built SVG charts. The visual system is in [DESIGN.md](DESIGN.md).
 
 > **SAMPLE ITEMS ONLY.** The repo ships 3 clearly labelled sample questions so the whole app can be tested.
 > To add the real bank, see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md).

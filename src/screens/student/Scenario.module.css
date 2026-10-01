@@ -110,3 +110,41 @@
   gap: var(--space-1) var(--space-4);
   font-variant-numeric: tabular-nums;
 }
+.situation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.situationText {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1.45;
+}
+.jars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.jarCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+.jarCard[data-active='true'] {
+  border-color: var(--color-foreground);
+  background: var(--color-tertiary-soft);
+}
+.jarSvg {
+  width: 44px;
+  height: 52px;
+}
+.jarValue {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-variant-numeric: tabular-nums;
+}
