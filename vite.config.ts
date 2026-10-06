@@ -13,8 +13,8 @@ const vendorChunk = (id: string): string | null => {
 const demoWarning = (): Plugin => ({
   name: 'setup-warning',
   buildStart() {
-    if (process.env.VERCEL_ENV === 'production' && !(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY)) {
-      this.warn('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set: this PRODUCTION build will show a "Not set up yet" page.');
+    if (process.env.VERCEL_ENV === 'production' && !(process.env.VITE_SUPABASE_URL && (process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY))) {
+      this.warn('VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are not set: this PRODUCTION build will show a "Not set up yet" page.');
     }
   },
 });

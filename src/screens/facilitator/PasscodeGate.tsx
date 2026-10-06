@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { LockKeyhole } from 'lucide-react';
-import { api, IS_DEMO } from '../../api';
+import { api } from '../../api';
 import { ApiError } from '../../api/types';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -56,11 +56,6 @@ export function PasscodeGate({ children }: { children: (passcode: string, lock: 
             <Button type="submit" size="lg" block disabled={!input || busy}>
               {busy ? 'Checking…' : 'Unlock'}
             </Button>
-            {IS_DEMO && (
-              <p className={s.demo}>
-                Demo mode passcode: <strong>demo</strong>
-              </p>
-            )}
           </Card>
         </div>
       </Screen>

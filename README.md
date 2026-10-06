@@ -98,7 +98,7 @@ answers only for an **open** session, so leave sessions open a few minutes after
    ```sql
    update public.app_config set passcode_hash = crypt('your-long-passcode', gen_salt('bf', 10));
    ```
-4. Copy the **Project URL** and **anon public key** (Settings → API).
+4. Copy the **Project URL** and the **publishable key** (Settings → API Keys). Do not use the secret key.
 
 Security model: RLS on every table with **no policies**, all table privileges revoked from `anon`. The browser can only call
 SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (open sessions, rate-limited), the passcode-gated
@@ -107,14 +107,14 @@ SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (op
 
 ### 2. Vercel
 1. Import the repo. `vercel.json` already sets the Vite framework, `npm run build` and the `dist` output. Node is pinned to 22 (`.nvmrc`, `engines`).
-2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for **Production and Preview** (see [.env.example](.env.example)). Without them the site runs the fake-data
+2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (your `sb_publishable_…` key; the older `VITE_SUPABASE_ANON_KEY` name also works) for **Production and Preview** (see [.env.example](.env.example)). Without them the site runs the fake-data
    "Not set up yet" page, and the Vercel build log prints a warning on production builds.
 3. Deploy. `vercel.json` rewrites all paths except `/assets/` to `index.html` (deep links like `/?c=TX014` and `/analysis` work), caches hashed assets for a year,
    and sets security headers including a Content-Security-Policy that allows only this site and `*.supabase.co`. If you add another host (analytics, fonts), edit the CSP there.
 4. After the first deploy: open `/`, `/analysis` and a deep link; set the passcode SQL above; run `supabase/tests/smoke.sql`.
 
 ### 3. GitHub Actions
-Add secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MC_PASSCODE`.
+Add secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY` (paste your **publishable** key here; the name is historical) and `MC_PASSCODE` (the facilitator passcode you set in SQL). Never use the secret key anywhere.
 - `heartbeat.yml`: daily `heartbeat()` so the free tier never pauses.
 - `backup.yml`: every Monday, exports every response to CSV + JSON as a workflow artifact (90 days).
 - `ci.yml`: tests, contrast check and build on every push.
