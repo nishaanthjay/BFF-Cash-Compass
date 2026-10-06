@@ -38,7 +38,7 @@ describe('mock API mirrors server rules', () => {
     expect(await code(api.createSession(DEMO_PASSCODE, 'NEW01', [], null))).toBe('invalid');
     expect(await api.joinSession('tx777')).toMatchObject({ session_id: s.id, modules: ['skill'], cohort_label: 'Grade 7' });
     await api.closeSession(DEMO_PASSCODE, s.id);
-    expect(await code(api.joinSession('TX777'))).toBe('not_found');
+    expect(await code(api.joinSession('TX777'))).toBe('session_closed');
   });
   it('students + answers: open sessions only, idempotent, no re-lock, resume by code', async () => {
     const api = make();

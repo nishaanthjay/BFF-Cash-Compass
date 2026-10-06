@@ -184,3 +184,97 @@
   padding-left: var(--space-5);
   font-weight: var(--weight-semibold);
 }
+
+.howto summary {
+  min-height: var(--layout-tap-min);
+  display: flex;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+.steps {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.strip li {
+  counter-increment: step;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-card);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
+}
+.strip li::before {
+  content: counter(step) '. ';
+  font-weight: var(--weight-extrabold);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.codeScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--color-background);
+  text-align: center;
+}
+.csUrl {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+.csCode {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-extrabold);
+  font-size: clamp(3rem, 18vw, 9rem);
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+.codeClose {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: grid;
+  place-items: center;
+  width: var(--layout-tap-min);
+  height: var(--layout-tap-min);
+  border: var(--border-width) solid var(--color-foreground);
+  border-radius: var(--radius-full);
+  background: var(--color-tertiary);
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}

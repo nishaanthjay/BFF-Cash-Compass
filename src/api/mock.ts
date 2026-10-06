@@ -11,10 +11,11 @@ const KEY = 'mc.mock.db.v3';
 /** Things created in this browser (the seed itself is regenerated in memory on load). */
 interface LiveDB extends SeedData {
   closed: Record<string, string>; // seeded session id -> closed_at (if closed in demo)
+  reopened: Record<string, true>; // seeded session ids reopened in demo
   rateAnswers: Record<string, number[]>;
   rateStudents: Record<string, number>;
 }
-const EMPTY: LiveDB = { sessions: [], students: [], answers: [], recodes: [], closed: {}, rateAnswers: {}, rateStudents: {} };
+const EMPTY: LiveDB = { sessions: [], students: [], answers: [], recodes: [], closed: {}, reopened: {}, rateAnswers: {}, rateStudents: {} };
 
 /**
  * In-browser stand-in for the Supabase RPCs. Enforces the same rules as the SQL
@@ -32,7 +33,10 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
   const all = () => {
     const s = getSeed();
     return {
-      sessions: [...s.sessions.map((x) => (live.closed[x.id] ? { ...x, status: 'closed' as const, closed_at: live.closed[x.id] } : x)), ...live.sessions],
+      sessions: [
+        ...s.sessions.map((x) => (live.reopened[x.id] ? { ...x, status: 'open' as const, closed_at: null } : live.closed[x.id] ? { ...x, status: 'closed' as const, closed_at: live.closed[x.id] } : x)),
+        ...live.sessions,
+      ],
       students: [...s.students, ...live.students],
       answers: [...s.answers, ...live.answers],
       recodes: [...s.recodes, ...live.recodes],
@@ -67,7 +71,10 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
       call(() => {
         const c = normalizeChapter(code);
         const s = all().sessions.find((x) => x.chapter_code === c && x.status === 'open');
-        if (!s) throw new ApiError('not_found', 'No open session for that chapter code');
+        if (!s) {
+          if (all().sessions.some((x) => x.chapter_code === c)) throw new ApiError('session_closed', 'That session has ended');
+          throw new ApiError('not_found', 'No open session for that chapter code');
+        }
         return { session_id: s.id, chapter_code: s.chapter_code, cohort_label: s.cohort_label, modules: s.modules, problem_ids: s.problem_ids ?? [] };
       }),
 
@@ -142,6 +149,31 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
           .map((s) => ({ ...s, ...stats(s.id) }));
       }),
 
+    recentSessions: (p) =>
+      call(() => {
+        auth(p);
+        return all()
+          .sessions.map((s) => ({ ...s, ...stats(s.id) }))
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .slice(0, 15);
+      }),
+
+    reopenSession: (p, id) =>
+      call(() => {
+        auth(p);
+        const s = sessionById(id);
+        if (!s) throw new ApiError('not_found');
+        if (s.status === 'open') return s;
+        if (all().sessions.some((x) => x.chapter_code === s.chapter_code && x.status === 'open' && x.id !== id)) throw new ApiError('chapter_busy', 'That chapter already has an open session');
+        const mine = live.sessions.find((x) => x.id === id);
+        if (mine) Object.assign(mine, { status: 'open', closed_at: null });
+        else {
+          live.reopened[id] = true;
+          delete live.closed[id];
+        }
+        return { ...s, status: 'open' as const, closed_at: null };
+      }),
+
     sessionStats: (p, id) =>
       call(() => {
         auth(p);
@@ -159,7 +191,10 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         const at = new Date(now()).toISOString();
         const mine = live.sessions.find((x) => x.id === id);
         if (mine) Object.assign(mine, { status: 'closed', closed_at: at });
-        else live.closed[id] = at;
+        else {
+          live.closed[id] = at;
+          delete live.reopened[id];
+        }
       }),
 
     exportData: (p, f: ExportFilters = {}) =>

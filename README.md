@@ -18,8 +18,9 @@ npm run dev                    # http://localhost:5173
 
 | Where | What |
 |---|---|
-| `/` | Student join (chapter code, or `/?c=CODE` from the QR) |
-| `/facilitator` | Your passcode → choose questions → start a session → project code + QR |
+| `/` | Home page: Join a workshop, or Facilitator log in |
+| `/join` | Student join (chapter code, or `/join?c=CODE` from the QR; old `/?c=CODE` links redirect here) |
+| `/facilitator` | Your passcode → **Quick start** (random 5, automatic code) or set it up yourself → project code + QR. Copy link, full-screen code, reopen or duplicate recent sessions |
 | `/analysis` | Same passcode → Problems, Teach first, Students, Quality tabs; CSV export |
 
 The facilitator passcode is **not in the code**. It lives (hashed) in your Supabase database; set it with the SQL in step 3 below.
@@ -93,7 +94,7 @@ answers only for an **open** session, so leave sessions open a few minutes after
 
 ### 1. Supabase
 1. Create a free project.
-2. Run the migrations in `supabase/migrations/` in order (`0001` … `0005`), in the SQL editor or with `supabase db push`.
+2. Run the migrations in `supabase/migrations/` in order (`0001` … `0006`), in the SQL editor or with `supabase db push`.
 3. **Set the facilitator passcode** (the migration installs a placeholder):
    ```sql
    update public.app_config set passcode_hash = crypt('your-long-passcode', gen_salt('bf', 10));
@@ -188,7 +189,7 @@ supabase/                migrations + SQL smoke test
 ## Decisions and assumptions
 
 - **Single-phase.** Taken once; no PRE/POST/DELAYED.
-- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions).
+- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions), `0006` adds recent/reopen sessions and a clear "session ended" error for students.
 - **Join model.** Chapter code alone; one open session per chapter.
 - **Truth snapshot.** Each answer stores its correct value at answer time, so later item edits don't rewrite past results.
 - **Chart colours.** Correct = Ledger Blue, named wrong pattern = pink `#DB2777`, unclassified = gray, validated with a colour-vision check; shapes and labels carry meaning too. Gold marks the headline finding.

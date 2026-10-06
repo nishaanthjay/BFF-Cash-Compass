@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { ApiError, normalizeChapter, type ApiClient, type ApiErrorCode, type ExportData, type OpenSession, type Session } from './types';
+import { ApiError, normalizeChapter, type ApiClient, type ApiErrorCode, type ExportData, type OpenSession, type RecentSession, type Session } from './types';
 
 const KNOWN: ApiErrorCode[] = ['rate_limited', 'not_found', 'session_closed', 'bad_passcode', 'invalid', 'chapter_busy'];
 
@@ -36,6 +36,8 @@ export function createSupabaseApi(url: string, anonKey: string): ApiClient {
     verifyPasscode: (p) => rpc<boolean>('fac_verify', { p_passcode: p }),
     createSession: (p, code, modules, cohort, problemIds = []) => rpc<Session>('fac_create_session', { p_passcode: p, p_chapter: normalizeChapter(code), p_modules: modules, p_cohort: cohort, p_problems: problemIds }),
     openSessions: (p) => rpc<OpenSession[]>('fac_open_sessions', { p_passcode: p }),
+    recentSessions: (p) => rpc<RecentSession[]>('fac_recent_sessions', { p_passcode: p, p_limit: 15 }),
+    reopenSession: (p, id) => rpc<Session>('fac_reopen_session', { p_passcode: p, p_session_id: id }),
     sessionStats: (p, id) => rpc('fac_session_stats', { p_passcode: p, p_session_id: id }),
     closeSession: async (p, id) => {
       await rpc('fac_close_session', { p_passcode: p, p_session_id: id });

@@ -5,6 +5,7 @@ import { DemoBanner } from './components/DemoBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Spinner } from './components/Spinner';
 import { IS_CONFIGURED, IS_DEMO } from './api';
+import { Landing } from './screens/Landing';
 import { Join } from './screens/student/Join';
 import { Run } from './screens/student/Run';
 
@@ -35,7 +36,8 @@ export function App() {
       <BrowserRouter>
         {IS_DEMO && <DemoBanner />}
         <Routes>
-          <Route path="/" element={guard(<Join />)} />
+          <Route path="/" element={guard(<Landing />)} />
+          <Route path="/join" element={guard(<Join />)} />
           <Route path="/run" element={guard(<Run />)} />
           <Route path="/facilitator" element={guard(<Facilitator />)} />
           <Route path="/analysis" element={guard(<Analysis />)} />

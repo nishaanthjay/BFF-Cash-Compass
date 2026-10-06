@@ -81,7 +81,7 @@ export function Run() {
     [run, problems],
   );
 
-  if (!run || problems.length === 0) return <Navigate to="/" replace />;
+  if (!run || problems.length === 0) return <Navigate to="/join" replace />;
 
   const doneSteps = problems.slice(0, run.pi).reduce((a, p) => a + stepsFor(p, run.forms).length, 0) + run.si;
 
@@ -93,7 +93,7 @@ export function Run() {
             studentCode={run.student_code}
             onFinish={() => {
               clearRun(kv);
-              navigate('/');
+              navigate('/join');
             }}
           />
         </Screen>

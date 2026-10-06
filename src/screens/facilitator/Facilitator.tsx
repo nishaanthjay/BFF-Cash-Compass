@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCheck, ListChecks, Play, Shuffle, Users } from 'lucide-react';
+import { CheckCheck, Copy, ListChecks, Maximize2, Play, RotateCcw, Shuffle, Users, Zap } from 'lucide-react';
 import { api } from '../../api';
-import { ApiError, CHAPTER_CODE, normalizeChapter, type OpenSession, type SessionStats, type SessionStatus } from '../../api/types';
+import { ApiError, CHAPTER_CODE, normalizeChapter, type OpenSession, type RecentSession, type SessionStats, type SessionStatus } from '../../api/types';
 import { estimateMinutes, pickUnits, problemsFor, SHORT_SESSION_SIZE, type PickUnit } from '../../items';
 import { MODULE_LABELS, type Module } from '../../items/types';
 
@@ -24,6 +24,9 @@ import { StaffShell } from '../../components/StaffShell';
 import { StatTile } from '../../components/StatTile';
 import { browserKV } from '../../lib/storage';
 import { color } from '../../styles/tokens';
+import { newChapterCode } from '../../lib/chapterCode';
+import { CodeScreen } from './CodeScreen';
+import { HowTo } from './HowTo';
 import { PasscodeGate } from './PasscodeGate';
 import s from './Facilitator.module.css';
 
@@ -31,7 +34,7 @@ const kv = browserKV();
 const ACTIVE_KEY = 'mc.fac.session';
 
 export function joinUrl(chapter: string, origin = window.location.origin) {
-  return `${origin}/?c=${encodeURIComponent(chapter)}`;
+  return `${origin}/join?c=${encodeURIComponent(chapter)}`;
 }
 
 function errText(e: unknown) {
@@ -56,6 +59,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     }
   });
   const [open, setOpen] = useState<OpenSession[] | null>(null);
+  const [recent, setRecent] = useState<RecentSession[]>([]);
   const [code, setCode] = useState('');
   const units = pickUnits();
   const [mode, setMode] = useState<Mode>('random');
@@ -78,6 +82,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
   const refresh = useCallback(async () => {
     try {
       setOpen(await api.openSessions(pass));
+      setRecent(await api.recentSessions(pass).catch(() => []));
     } catch (e) {
       if (e instanceof ApiError && e.code === 'bad_passcode') lock();
       else setError(errText(e));
@@ -88,15 +93,22 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     if (!active) void refresh();
   }, [active, refresh]);
 
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    const c = normalizeChapter(code);
-    if (!CHAPTER_CODE.test(c)) return setError('Chapter codes are 3 to 10 letters or numbers.');
+  /** Create a session, picking a fresh automatic code when none is given (retrying if one is already taken). */
+  async function start(opts: { code?: string; label: string; modules: Module[]; ids: string[] }) {
     setBusy(true);
     setError(null);
     try {
-      const sess = await api.createSession(pass, c, ALL_MODULES, cohort, mode === 'all' ? [] : chosenIds);
-      activate({ id: sess.id, chapter: sess.chapter_code });
+      let last: unknown = null;
+      for (let i = 0; i < (opts.code ? 1 : 5); i++) {
+        try {
+          const sess = await api.createSession(pass, opts.code || newChapterCode(), opts.modules, opts.label, opts.ids);
+          return activate({ id: sess.id, chapter: sess.chapter_code });
+        } catch (err) {
+          last = err;
+          if (!(err instanceof ApiError && err.code === 'chapter_busy' && !opts.code)) break;
+        }
+      }
+      throw last;
     } catch (err) {
       setError(errText(err));
       void refresh();
@@ -104,6 +116,34 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
       setBusy(false);
     }
   }
+
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    const c = normalizeChapter(code);
+    if (c && !CHAPTER_CODE.test(c)) return setError('Chapter codes are 3 to 10 letters or numbers. Or leave it blank for an automatic code.');
+    await start({ code: c, label: cohort, modules: ALL_MODULES, ids: mode === 'all' ? [] : chosenIds });
+  }
+
+  const quickStart = () => {
+    const keys = draw(units);
+    return start({ label: cohort, modules: ALL_MODULES, ids: units.filter((u) => keys.includes(u.key)).flatMap((u) => u.ids) });
+  };
+
+  async function reopen(id: string, chapter: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.reopenSession(pass, id);
+      activate({ id, chapter });
+    } catch (err) {
+      setError(errText(err));
+      void refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const duplicate = (r: RecentSession) => start({ label: r.cohort_label ?? '', modules: r.modules, ids: r.problem_ids ?? [] });
 
   return (
     <StaffShell onLock={lock} decor={!active}>
@@ -116,17 +156,22 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
               <h1 className={s.h1}>Run a Cash Compass session</h1>
               <p className={s.sub}>Start a session for your chapter, then project the code and QR for students.</p>
             </div>
+            <HowTo />
             <div className={s.grid2}>
               <Card as="section" tone="featured" aria-labelledby="new-h">
                 <form className={s.form} onSubmit={create} noValidate>
                   <h2 id="new-h">New session</h2>
+                  <Button type="button" size="lg" block onClick={quickStart} disabled={busy}>
+                    <Zap size={20} strokeWidth={2.5} aria-hidden /> Quick start · Random 5
+                  </Button>
+                  <p className={s.muted}>One tap: 5 random problems and an automatic join code. Or set it up yourself below.</p>
                   <Input
-                    label="Chapter code"
+                    label="Chapter code (optional)"
                     code
                     value={code}
                     onChange={(e) => setCode(normalizeChapter(e.target.value).slice(0, 10))}
                     placeholder="TX014"
-                    hint="Use your chapter’s code. One open session per chapter."
+                    hint="Leave blank for an automatic code, or use your chapter’s code. One open session per chapter."
                     autoComplete="off"
                   />
                   <Input label="Group label (optional)" value={cohort} maxLength={60} onChange={(e) => setCohort(e.target.value)} placeholder="Grade 7 · Tuesday" hint="Helps you find this workshop later. No student names." />
@@ -187,7 +232,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                     </p>
                   </fieldset>
                   {error && <FieldError>{error}</FieldError>}
-                  <Button type="submit" size="lg" block disabled={busy || code.length < 3 || !ready}>
+                  <Button type="submit" size="lg" block disabled={busy || (code.length > 0 && code.length < 3) || !ready}>
                     {busy ? 'Starting…' : 'Start session'}
                   </Button>
                 </form>
@@ -220,6 +265,42 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                 </div>
               </Card>
             </div>
+            {recent.some((r) => r.status === 'closed') && (
+              <Card as="section" aria-labelledby="recent-h">
+                <div className={s.form}>
+                  <h2 id="recent-h">Recent sessions</h2>
+                  <ul className={s.list}>
+                    {recent
+                      .filter((r) => r.status === 'closed')
+                      .slice(0, 6)
+                      .map((r) => {
+                        const taken = recent.some((x) => x.status === 'open' && x.chapter_code === r.chapter_code);
+                        return (
+                          <li key={r.id} className={s.listItem}>
+                            <div>
+                              <div className={s.code}>{r.chapter_code}</div>
+                              <div className={`${s.muted} num`}>
+                                {r.cohort_label ? `${r.cohort_label} · ` : ''}
+                                {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {r.students} started · {r.finished} finished
+                              </div>
+                            </div>
+                            <div className={s.row}>
+                              <Button size="sm" variant="secondary" disabled={busy || taken} title={taken ? 'This chapter already has an open session' : undefined} onClick={() => reopen(r.id, r.chapter_code)}>
+                                <RotateCcw size={16} strokeWidth={2.5} aria-hidden /> Reopen
+                              </Button>
+                              <Button size="sm" variant="ghost" disabled={busy} onClick={() => duplicate(r)}>
+                                Duplicate
+                              </Button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                  <p className={s.muted}>Reopen lets students keep going with their codes. Duplicate starts a fresh session with the same questions.</p>
+                </div>
+              </Card>
+            )}
+            {error && <FieldError>{error}</FieldError>}
           </div>
         )}
       </Screen>
@@ -231,6 +312,8 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
   const [stats, setStats] = useState<(SessionStats & { status: SessionStatus }) | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [full, setFull] = useState(false);
   const url = joinUrl(chapter);
 
   const poll = useCallback(async () => {
@@ -262,6 +345,21 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
     }
   }
 
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const t = document.createElement('textarea');
+      t.value = url;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      t.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   const isOpen = stats?.status !== 'closed';
 
   return (
@@ -275,6 +373,15 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
           </p>
         </div>
       </div>
+
+      {isOpen && (
+        <ol className={s.strip} aria-label="Steps">
+          <li>Project this</li>
+          <li>Students join</li>
+          <li>Watch Finished</li>
+          <li>Close when done</li>
+        </ol>
+      )}
 
       <div className={s.project}>
         <Card className={s.codeCard}>
@@ -299,6 +406,15 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
       {error && <FieldError>{error}</FieldError>}
 
       <div className={s.actions}>
+        <Button variant="secondary" onClick={copyLink}>
+          <Copy size={18} strokeWidth={2.5} aria-hidden /> {copied ? 'Copied!' : 'Copy link'}
+        </Button>
+        <span className={s.srOnly} role="status" aria-live="polite">
+          {copied ? 'Link copied' : ''}
+        </span>
+        <Button variant="secondary" onClick={() => setFull(true)}>
+          <Maximize2 size={18} strokeWidth={2.5} aria-hidden /> Full screen
+        </Button>
         {isOpen ? (
           <Button variant={confirm ? 'primary' : 'secondary'} onClick={close} onBlur={() => setConfirm(false)}>
             {confirm ? 'Tap again to close session' : 'Close session'}
@@ -318,6 +434,7 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
           Open live dashboard →
         </Link>
       </div>
+      {full && <CodeScreen chapter={chapter} url={url} joined={stats?.students ?? 0} onClose={() => setFull(false)} />}
     </div>
   );
 }

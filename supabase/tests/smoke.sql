@@ -118,7 +118,8 @@ begin
 
   -- closed session: no join, no inserts, no resume
   perform fac_close_session('test-pass', s.id);
-  if exists (select 1 from join_session('TX014')) then raise exception 'FAIL: joined a closed session'; end if;
+  begin perform * from join_session('TX014'); raise exception 'FAIL: joined a closed session';
+  exception when raise_exception then if sqlerrm <> 'session_closed' then raise; end if; end;
   r := sync_answers(gen_random_uuid(), '[]', jsonb_build_array(mk || jsonb_build_object('answer_id', gen_random_uuid(), 'step_id', 'late', 'raw_value', 1)));
   if jsonb_array_length(r->'rejected') <> 1 then raise exception 'FAIL: insert into closed session'; end if;
   if resume_student(s.id, 'ABC234') is not null then raise exception 'FAIL: resume into closed session'; end if;
@@ -131,3 +132,26 @@ begin
   raise notice 'ALL SMOKE CHECKS PASSED';
 end $$;
 reset role;
+
+-- 4. Reopen, recent sessions, closed-session join (migration 0006).
+do $$
+declare s sessions; r sessions; n int; caught text;
+begin
+  s := fac_create_session('test-pass', 'REOP1', array['skill'], 'x', '{}');
+  perform fac_close_session('test-pass', s.id);
+  begin perform * from join_session('reop1'); raise exception 'FAIL: closed join returned no error';
+  exception when raise_exception then if sqlerrm <> 'session_closed' then raise; end if; end;
+  if exists (select 1 from join_session('nosuch1')) then raise exception 'FAIL: unknown code returned a row'; end if;
+  select count(*) into n from fac_recent_sessions('test-pass', 50) where id = s.id and status = 'closed';
+  if n <> 1 then raise exception 'FAIL: recent sessions'; end if;
+  r := fac_reopen_session('test-pass', s.id);
+  if r.status <> 'open' or r.closed_at is not null then raise exception 'FAIL: reopen %', r; end if;
+  if not exists (select 1 from join_session('reop1')) then raise exception 'FAIL: join after reopen'; end if;
+  perform fac_close_session('test-pass', s.id);
+  perform fac_create_session('test-pass', 'REOP1', array['skill'], null, '{}');
+  begin perform fac_reopen_session('test-pass', s.id); raise exception 'FAIL: reopen while chapter busy';
+  exception when raise_exception then if sqlerrm <> 'chapter_busy' then raise; end if; end;
+  begin perform fac_reopen_session('wrong', s.id); raise exception 'FAIL: reopen without passcode';
+  exception when raise_exception then if sqlerrm <> 'bad_passcode' then raise; end if; end;
+  raise notice 'reopen checks passed';
+end $$;

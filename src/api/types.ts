@@ -29,6 +29,9 @@ export interface SessionStats {
 
 export interface OpenSession extends Session, SessionStats {}
 
+/** A session of any status, with counts (for the facilitator's Recent list). */
+export type RecentSession = OpenSession;
+
 export interface JoinedSession {
   session_id: string;
   chapter_code: string;
@@ -127,6 +130,10 @@ export interface ApiClient {
   verifyPasscode(passcode: string): Promise<boolean>;
   createSession(passcode: string, chapterCode: string, modules: Module[], cohortLabel: string | null, problemIds?: string[]): Promise<Session>;
   openSessions(passcode: string): Promise<OpenSession[]>;
+  /** Latest sessions of any status, newest first. */
+  recentSessions(passcode: string): Promise<RecentSession[]>;
+  /** Closed -> open again. Throws chapter_busy if the chapter already has an open session. */
+  reopenSession(passcode: string, sessionId: string): Promise<Session>;
   sessionStats(passcode: string, sessionId: string): Promise<SessionStats & { status: SessionStatus }>;
   closeSession(passcode: string, sessionId: string): Promise<void>;
   exportData(passcode: string, filters?: ExportFilters): Promise<ExportData>;

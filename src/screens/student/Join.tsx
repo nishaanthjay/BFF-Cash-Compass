@@ -26,7 +26,9 @@ function messageFor(e: unknown): string {
   const code = e instanceof ApiError ? e.code : 'network';
   switch (code) {
     case 'not_found':
-      return 'No open session for that code. Check the screen at the front of the room.';
+      return 'We can’t find that code. Check the screen at the front of the room (letters and numbers only).';
+    case 'session_closed':
+      return 'This session has ended. Ask your facilitator to reopen it.';
     case 'network':
       return 'Can’t reach Cash Compass right now. Check the wifi and try again.';
     case 'rate_limited':
@@ -54,6 +56,7 @@ export function Join() {
 
   async function findSession(e: FormEvent) {
     e.preventDefault();
+    if (!online) return setError('You’re offline. Connect to wifi to join.');
     const c = normalizeChapter(code);
     if (!CHAPTER_CODE.test(c)) return setError('Chapter codes are 3 to 10 letters or numbers, like TX014.');
     setBusy(true);
@@ -108,6 +111,7 @@ export function Join() {
         </div>
 
         <div className={s.stack}>
+          {!online && <FieldError>You’re offline. Connect to wifi to join.</FieldError>}
           {existing && !joined && (
             <Card tone="mint" className={s.resume}>
               <h2 className={s.h2}>Welcome back!</h2>
