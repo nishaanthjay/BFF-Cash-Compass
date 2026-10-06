@@ -8,25 +8,24 @@ A financial-literacy diagnostic for grades 6–8, run once at the start of a BFF
 > Spec*. It is marked "Draft wording" in the admin pages. Replace it with approved wording before using results for
 > anything beyond workshop teaching (see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md)).
 
-## Quick start (demo mode, zero infrastructure)
+## Quick start
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+cp .env.example .env.local     # fill in your Supabase URL and anon key (see "Real deployment")
+npm run dev                    # http://localhost:5173
 ```
-
-With no Supabase env vars, the app runs against an **in-browser mock API** with seeded, clearly labelled **DEMO DATA**
-(about 8 workshops of synthetic students, one live and one deliberately low-n). Everything works, including the admin dashboard.
 
 | Where | What |
 |---|---|
 | `/` | Student join (chapter code, or `/?c=CODE` from the QR) |
-| `/facilitator` | Passcode **`demo`** → pick modules → start a session → project code + QR |
+| `/facilitator` | Your passcode → choose questions → start a session → project code + QR |
 | `/analysis` | Same passcode → Problems, Teach first, Students, Quality tabs; CSV export |
-| `/analysis/item/S6` | One problem's charts and "facilitator decision" |
 
-To demo the whole loop on one laptop, start session `TX999` on `/facilitator`, then open `/?c=TX999` in another tab. Both tabs share
-the demo database in localStorage. "Reset demo data" restores the seed.
+The facilitator passcode is **not in the code**. It lives (hashed) in your Supabase database; set it with the SQL in step 3 below.
+
+**Local-only demo data:** put `VITE_DEMO=1` in `.env.local` to run against in-browser fake data with the passcode `demo`. This is for development and
+screenshots; production builds never include it, and without Supabase keys a deployed site shows a "Not set up yet" page.
 
 ## How it works
 
@@ -109,7 +108,7 @@ SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (op
 ### 2. Vercel
 1. Import the repo. `vercel.json` already sets the Vite framework, `npm run build` and the `dist` output. Node is pinned to 22 (`.nvmrc`, `engines`).
 2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for **Production and Preview** (see [.env.example](.env.example)). Without them the site runs the fake-data
-   demo, and the Vercel build log prints a warning on production builds.
+   "Not set up yet" page, and the Vercel build log prints a warning on production builds.
 3. Deploy. `vercel.json` rewrites all paths except `/assets/` to `index.html` (deep links like `/?c=TX014` and `/analysis` work), caches hashed assets for a year,
    and sets security headers including a Content-Security-Policy that allows only this site and `*.supabase.co`. If you add another host (analytics, fonts), edit the CSP there.
 4. After the first deploy: open `/`, `/analysis` and a deep link; set the passcode SQL above; run `supabase/tests/smoke.sql`.

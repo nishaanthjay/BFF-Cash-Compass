@@ -3,7 +3,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { DemoBanner } from './components/DemoBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { IS_DEMO } from './api';
+import { IS_CONFIGURED, IS_DEMO } from './api';
 import { Join } from './screens/student/Join';
 import { Run } from './screens/student/Run';
 
@@ -18,7 +18,17 @@ const guard = (el: ReactNode) => (
   </ErrorBoundary>
 );
 
+function SetupNeeded() {
+  return (
+    <main style={{ maxWidth: 560, margin: '15vh auto', padding: 'var(--space-6)' }}>
+      <h1>Not set up yet</h1>
+      <p>This site has no database connected. The site owner needs to set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY and redeploy.</p>
+    </main>
+  );
+}
+
 export function App() {
+  if (!IS_DEMO && !IS_CONFIGURED) return <SetupNeeded />;
   return (
     <MotionConfig reducedMotion="user">
       <BrowserRouter>

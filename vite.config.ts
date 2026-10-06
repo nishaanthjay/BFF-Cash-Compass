@@ -9,12 +9,12 @@ const vendorChunk = (id: string): string | null => {
   return null;
 };
 
-/** Vercel production builds without Supabase vars silently become the fake-data demo; say so in the build log. */
+/** A production build without Supabase vars shows a "Not set up yet" page; say so in the build log. */
 const demoWarning = (): Plugin => ({
-  name: 'demo-mode-warning',
+  name: 'setup-warning',
   buildStart() {
     if (process.env.VERCEL_ENV === 'production' && !(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY)) {
-      this.warn('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set: this PRODUCTION build runs in DEMO mode (in-browser fake data, nothing saved to a server).');
+      this.warn('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set: this PRODUCTION build will show a "Not set up yet" page.');
     }
   },
 });

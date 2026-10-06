@@ -1,4 +1,5 @@
-// Demo-mode walk-through + screenshots. node scripts/e2e.mjs <base> <out>
+// Demo-mode walk-through + screenshots. Start the app with VITE_DEMO=1 first:
+//   VITE_DEMO=1 npx vite --port 5173   then   node scripts/e2e.mjs http://localhost:5173 screenshots
 import { chromium } from 'playwright';
 const base = process.argv[2] ?? 'http://localhost:5173';
 const out = process.argv[3] ?? 'screenshots';
