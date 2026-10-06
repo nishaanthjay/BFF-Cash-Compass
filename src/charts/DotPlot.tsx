@@ -59,10 +59,10 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect, bandP
     .map((r) => ({ ...r, text: 'custom' in r && r.custom ? String(r.custom) : r.code === 'CORR' ? `✓ ${formatUnit(r.value, axis.unit)}` : `${r.code} ${formatUnit(r.value, axis.unit)}` }));
   const rowEnd: number[] = [];
   const placed = refs.map((r) => {
-    const w2 = r.text.length * 6.6;
+    const w2 = r.text.length * 7.8;
     const start = x(r.value) - w2 / 2;
-    let row = rowEnd.findIndex((e) => e + 8 < start);
-    if (row < 0) row = rowEnd.length < 5 ? rowEnd.length : rowEnd.indexOf(Math.min(...rowEnd));
+    let row = rowEnd.findIndex((e) => e + 12 < start);
+    if (row < 0) row = rowEnd.length < 7 ? rowEnd.length : rowEnd.indexOf(Math.min(...rowEnd));
     rowEnd[row] = x(r.value) + w2 / 2;
     return { ...r, row };
   });
@@ -147,7 +147,7 @@ export function DotPlot({ rows, blank, axis, correct, codes, rc, onSelect, bandP
           </g>
         ))}
         {axis.scale === 'log' && (
-          <text className={s.tick} x={w - PAD_X} y={base + 34} textAnchor="end" fontSize={fontPx.xs}>
+          <text className={s.tick} x={w / 2} y={base + 34} textAnchor="middle" fontSize={fontPx.xs}>
             log scale
           </text>
         )}

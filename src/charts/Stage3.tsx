@@ -215,6 +215,11 @@ export function Slope({ first, second, order, labels, n }: { first: Record<strin
   const y = (rank: number) => T + ((rank - 1) / (k - 1)) * (H - T - B);
   const side = Math.min(160, w * 0.36);
   const cols = [side, side + (w - 2 * side) / 2, w - side];
+  // First-guess averages are fractional, so nudge left labels apart when two land within a text line.
+  const ids = order.filter((id) => Number.isFinite(first[id]) && Number.isFinite(second[id])).sort((p, q) => y(first[p]) - y(first[q]));
+  const labelY: Record<string, number> = {};
+  let prevY = -Infinity;
+  for (const id of ids) prevY = labelY[id] = Math.max(y(first[id]), prevY + 16);
   return (
     <div ref={ref} className={s.wrap}>
       <div className={s.legend} aria-hidden>
@@ -244,7 +249,7 @@ export function Slope({ first, second, order, labels, n }: { first: Record<strin
               {[a, b, comp].map((r, i) => (
                 <circle key={i} cx={cols[i]} cy={y(r)} r={5} fill={i === 2 ? color.card : stroke} stroke={color.foreground} strokeWidth={2} />
               ))}
-              <text className={s.tick} x={cols[0] - 12} y={y(a) + 4} textAnchor="end" fontSize={fontPx.xs} fill={color.foreground}>
+              <text className={s.tick} x={cols[0] - 12} y={labelY[id] + 4} textAnchor="end" fontSize={fontPx.xs} fill={color.foreground}>
                 {labels[id]}
               </text>
               <text className={s.tick} x={cols[2] + 12} y={y(comp) + 4} fontSize={fontPx.xs} fill={color.foreground}>

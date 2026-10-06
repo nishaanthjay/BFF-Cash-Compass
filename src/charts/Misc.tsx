@@ -79,8 +79,9 @@ export function PairedPlot({ pairs, axis, showCodes, note }: { pairs: { key: str
   const shown = sorted.slice(0, 60);
   const left = showCodes ? 66 : 14;
   const x = (v: number) => left + toFrac(v, axis) * (w - left - 16);
-  const rh = 13;
-  const H = shown.length * rh + 30;
+  const rh = 18;
+  const T = 22;
+  const H = shown.length * rh + T + 30;
   const tiny = pairs.filter((p) => Math.abs(p.b - p.a) < 1.5).length;
   const tks = ticks(axis, Math.max(3, Math.floor(w / 80)));
   return (
@@ -97,14 +98,17 @@ export function PairedPlot({ pairs, axis, showCodes, note }: { pairs: { key: str
         <svg className={s.svg} width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-label={`${pairs.length} students, ${tiny} moved less than 1.5 between the two answers`}>
           {tks.map((t) => (
             <g key={t}>
-              <line x1={x(t)} x2={x(t)} y1={0} y2={H - 20} stroke={chart.grid} />
+              <line x1={x(t)} x2={x(t)} y1={T - 4} y2={H - 20} stroke={chart.grid} />
+              <text className={s.tick} x={x(t)} y={12} textAnchor="middle" fontSize={fontPx.xs}>
+                {formatAxis(t, axis.unit)}
+              </text>
               <text className={s.tick} x={x(t)} y={H - 6} textAnchor="middle" fontSize={fontPx.xs}>
                 {formatAxis(t, axis.unit)}
               </text>
             </g>
           ))}
           {shown.map((p, i) => {
-            const y = i * rh + 8;
+            const y = i * rh + T + 8;
             return (
               <g key={p.key}>
                 {showCodes && (

@@ -17,7 +17,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Keep a breadcrumb for facilitators debugging on-site; no student data is logged.
-    console.warn('Money Check screen error', error.message, info.componentStack?.split('\n')[1]);
+    console.warn('Cash Compass screen error', error.message, info.componentStack?.split('\n')[1]);
   }
 
   render() {
