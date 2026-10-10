@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { ApiError, type ExportData } from '../../api/types';
 import { applyFilters, MIN_CELL, recodeMap } from '../../lib/analysis';
+import { isSampleId, loadSample, mergeSample, type DataMode } from '../../lib/sample';
 
 /**
  * Loads all rows once (and re-polls every 10 s while a live workshop is selected),
@@ -15,6 +16,12 @@ export function useDashboard(pass: string, lock: () => void) {
   const [loadedAt, setLoadedAt] = useState<Date | null>(null);
   const sessionId = params.get('session') ?? '';
   const projector = params.get('projector') === '1';
+  const mode: DataMode = params.get('data') === 'sample' ? 'sample' : params.get('data') === 'both' ? 'both' : 'real';
+  const [sample, setSample] = useState<ExportData | null>(null);
+  useEffect(() => {
+    if (mode === 'real' || sample) return;
+    void loadSample().then(setSample, () => setError('Couldn’t load the sample data.'));
+  }, [mode, sample]);
 
   const load = useCallback(async () => {
     try {
@@ -31,16 +38,17 @@ export function useDashboard(pass: string, lock: () => void) {
     void load();
   }, [load]);
 
-  const session = data?.sessions.find((s) => s.id === sessionId) ?? null;
-  const live = session?.status === 'open';
+  const merged = useMemo(() => (data ? mergeSample(data, sample, mode) : null), [data, sample, mode]);
+  const session = merged?.sessions.find((s) => s.id === sessionId) ?? null;
+  const live = session?.status === 'open' && !isSampleId(session.id);
   useEffect(() => {
     if (!live) return;
     const t = setInterval(() => void load(), 10_000);
     return () => clearInterval(t);
   }, [live, load]);
 
-  const scoped = useMemo(() => (data ? applyFilters(data, sessionId ? { session_id: sessionId } : {}) : null), [data, sessionId]);
-  const rc = useMemo(() => recodeMap(data?.recodes ?? []), [data]);
+  const scoped = useMemo(() => (merged ? applyFilters(merged, sessionId ? { session_id: sessionId } : {}) : null), [merged, sessionId]);
+  const rc = useMemo(() => recodeMap(merged?.recodes ?? []), [merged]);
 
   const set = (k: string, v: string | null) => {
     const next = new URLSearchParams(params);
@@ -50,7 +58,11 @@ export function useDashboard(pass: string, lock: () => void) {
   };
 
   return {
-    data,
+    data: merged,
+    realData: data,
+    mode,
+    sampleOn: mode !== 'real',
+    setMode: (m: DataMode) => set('data', m === 'real' ? null : m),
     scoped,
     rc,
     error,

@@ -9,6 +9,7 @@ import { Screen } from '../../components/Screen';
 import { Select } from '../../components/Select';
 import { StaffShell } from '../../components/StaffShell';
 import { downloadText, responsesToCsv } from '../../lib/csv';
+import { realResponses, type DataMode } from '../../lib/sample';
 import type { Dashboard } from './useDashboard';
 import s from './Dashboard.module.css';
 
@@ -20,7 +21,7 @@ export function DashboardShell({ d, lock, title, sub, children }: { d: Dashboard
   const exportCsv = () => {
     if (!d.scoped) return;
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadText(`money-check-${d.session ? d.session.chapter_code : 'all'}-${stamp}.csv`, responsesToCsv(d.scoped.responses, d.data?.recodes));
+    downloadText(`money-check-${d.session ? d.session.chapter_code : 'all'}-${stamp}.csv`, responsesToCsv(realResponses(d.scoped.responses), d.data?.recodes));
   };
   return (
     <StaffShell onLock={lock} decor={false}>
@@ -36,7 +37,7 @@ export function DashboardShell({ d, lock, title, sub, children }: { d: Dashboard
               {sub && <p className={s.sub}>{sub}</p>}
             </div>
             {!d.projector && (
-              <Button variant="gold" onClick={exportCsv} disabled={!d.scoped?.responses.length}>
+              <Button variant="gold" onClick={exportCsv} disabled={!d.scoped || !realResponses(d.scoped.responses).length}>
                 <IconBadge icon={Download} tone="soft" size="sm" />
                 Export CSV
               </Button>
@@ -54,6 +55,11 @@ export function DashboardShell({ d, lock, title, sub, children }: { d: Dashboard
                   </option>
                 ))}
               </Select>
+              <Select label="Data" value={d.mode} onChange={(e) => d.setMode(e.target.value as DataMode)}>
+                <option value="real">Real data only</option>
+                <option value="sample">Sample data only</option>
+                <option value="both">Real + sample</option>
+              </Select>
               <label className={s.toggle}>
                 <input type="checkbox" checked={d.projector} onChange={(e) => d.setProjector(e.target.checked)} />
                 Projector mode
@@ -67,6 +73,11 @@ export function DashboardShell({ d, lock, title, sub, children }: { d: Dashboard
               )}
             </div>
           </Card>
+          {d.sampleOn && (
+            <p className={s.sampleBanner} role="status">
+              <strong>Sample data.</strong> {d.mode === 'sample' ? 'These are made-up students' : 'This view includes made-up students'} for showing how the dashboard works. Not real results, and never saved or exported.
+            </p>
+          )}
           {d.error && <FieldError>{d.error}</FieldError>}
           {!d.scoped ? <p className={s.muted}>Loading responses…</p> : children}
         </div>

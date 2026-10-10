@@ -30,6 +30,10 @@ const WORKSHOPS: { chapter: string; cohort: string; n: number; daysAgo: number; 
   { chapter: 'IL052', cohort: 'Fall · Grade 7', n: 17, daysAgo: 18, modules: ['skill'] },
   { chapter: 'FL310', cohort: 'Fall · Grade 8', n: 26, daysAgo: 12, modules: ['skill', 'feasibility', 'hybrid'] },
   { chapter: 'WA401', cohort: 'Pilot', n: 4, daysAgo: 7, modules: ['skill', 'feasibility'] },
+  { chapter: 'AZ090', cohort: 'Summer · Grade 6', n: 25, daysAgo: 62, modules: ['skill', 'feasibility', 'hybrid'] },
+  { chapter: 'OH166', cohort: 'Summer · Grade 7', n: 23, daysAgo: 55, modules: ['skill', 'feasibility', 'hybrid'] },
+  { chapter: 'MI249', cohort: 'Summer · Mixed', n: 20, daysAgo: 47, modules: ['skill', 'feasibility'] },
+  { chapter: 'VA338', cohort: 'Fall · Grade 8', n: 27, daysAgo: 42, modules: ['skill', 'feasibility', 'hybrid'] },
   { chapter: 'NC027', cohort: 'Today · Grade 7', n: 21, daysAgo: 0, modules: ['skill', 'feasibility', 'hybrid'], open: true },
 ];
 

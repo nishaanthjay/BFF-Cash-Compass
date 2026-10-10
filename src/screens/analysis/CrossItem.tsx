@@ -4,6 +4,7 @@ import type { ExportData } from '../../api/types';
 import { ChartCard } from '../../components/ChartCard';
 import { Select } from '../../components/Select';
 import { applyFilters, studentKey } from '../../lib/analysis';
+import { isSampleId } from '../../lib/sample';
 import { biasByProblem, compounding, feasibility, medianSeconds, workshopTrend, gapMap, instrumentQuality, methodComparison, problemScores, radar, studentSteps, teachFirst, unkRows, type RadarPoint } from '../../lib/crossItem';
 import { ALL_PROBLEMS } from '../../items';
 import { CODES, FAMILY_LABELS, type Code } from '../../items/families';
@@ -304,8 +305,8 @@ function Quality({ d, data, pass, date }: { d: Dashboard; data: ExportData; pass
                     </th>
                     <td>{r.raw_value === null ? '—' : r.raw_value.toLocaleString('en-US')}</td>
                     <td>
-                      <select aria-label={`Assign a code to ${r.item_id} ${r.step_id} answer ${r.raw_value}`} disabled={busy === r.answer_id} defaultValue="" onChange={(e) => void recode(r.answer_id, e.target.value)}>
-                        <option value="">Choose…</option>
+                      <select aria-label={`Assign a code to ${r.item_id} ${r.step_id} answer ${r.raw_value}`} disabled={busy === r.answer_id || isSampleId(r.answer_id)} defaultValue="" onChange={(e) => void recode(r.answer_id, e.target.value)}>
+                        <option value="">{isSampleId(r.answer_id) ? 'Sample answer' : 'Choose…'}</option>
                         {options.map((c) => (
                           <option key={c} value={c}>
                             {c} · {CODES[c].label}

@@ -28,6 +28,13 @@ The facilitator passcode is **not in the code**. It lives (hashed) in your Supab
 **Local-only demo data:** put `VITE_DEMO=1` in `.env.local` to run against in-browser fake data with the passcode `demo`. This is for development and
 screenshots; production builds never include it, and without Supabase keys a deployed site shows a "Not set up yet" page.
 
+## Sample data for showing it off
+
+On any analysis page, the **Data** menu has *Sample data only* and *Real + sample*. This shows about 12 made-up workshops (~290 students)
+so the dashboard has something to show before you have real results. The sample is built in the browser, never saved to the database,
+labelled SAMPLE everywhere, left out of CSV exports, and the recode tool is disabled on it. Default is *Real data only*.
+Share a link with `?data=sample` on the end to open straight into it. Switch back to real data before presenting real results.
+
 ## How it works
 
 1. **Facilitator** starts a session for a chapter code and chooses the questions: **Random 5** (we draw 5 problems for the whole group, with a Shuffle button), **I'll pick 5**, or **Everything** (long). The same problems go to every student, so each chart has the full group's n. S11A/S11B always travel together as one pick. The screen shows the code,
