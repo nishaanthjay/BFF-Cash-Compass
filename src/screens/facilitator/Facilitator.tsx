@@ -42,6 +42,7 @@ function errText(e: unknown) {
     if (e.code === 'chapter_busy') return 'That chapter already has an open session. Resume it below.';
     if (e.code === 'invalid') return 'Chapter codes are 3 to 10 letters or numbers.';
     if (e.code === 'network') return 'Can’t reach the server. Check the connection.';
+    if (e.code === 'locked_out') return 'Too many wrong passcodes. Wait about 15 minutes.';
   }
   return 'Something went wrong. Try again.';
 }
@@ -171,7 +172,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                     value={code}
                     onChange={(e) => setCode(normalizeChapter(e.target.value).slice(0, 10))}
                     placeholder="TX014"
-                    hint="Leave blank for an automatic code, or use your chapter’s code. One open session per chapter."
+                    hint="Leave blank for an automatic 6-character code, or use your chapter’s code. One open session per chapter. Sessions close by themselves after 6 hours."
                     autoComplete="off"
                   />
                   <Input label="Group label (optional)" value={cohort} maxLength={60} onChange={(e) => setCohort(e.target.value)} placeholder="Grade 7 · Tuesday" hint="Helps you find this workshop later. No student names." />

@@ -1,7 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createMockApi, DEMO_PASSCODE } from '../src/api/mock';
+import { signIn } from './fixtures';
+import { createMockApi } from '../src/api/mock';
 import { buildSeed } from '../src/api/seed';
 import { ApiError, CHAPTER_CODE } from '../src/api/types';
 import { newChapterCode } from '../src/lib/chapterCode';
@@ -15,11 +16,11 @@ const make = () => createMockApi(memoryKV(), { latencyMs: 0, isOnline: () => tru
 const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: ApiError) => e.code);
 
 describe('automatic chapter codes', () => {
-  it('are valid, 5 long, and not repeating', () => {
+  it('are valid, at least 6 long, and not repeating', () => {
     const codes = new Set(Array.from({ length: 200 }, () => newChapterCode()));
     expect(codes.size).toBeGreaterThan(190);
     for (const c of codes) {
-      expect(c).toHaveLength(5);
+      expect(c.length).toBeGreaterThanOrEqual(6);
       expect(CHAPTER_CODE.test(c)).toBe(true);
       expect(/[01OIL]/.test(c)).toBe(false);
     }
@@ -29,40 +30,44 @@ describe('automatic chapter codes', () => {
 describe('reopen and recent sessions (mock)', () => {
   it('lists recent sessions newest first, with a closed one reopenable', async () => {
     const api = make();
-    const s = await api.createSession(DEMO_PASSCODE, 'NEW11', ['skill'], 'a', ['S1']);
-    await api.closeSession(DEMO_PASSCODE, s.id);
-    const recent = await api.recentSessions(DEMO_PASSCODE);
+    const T = await signIn(api);
+    const s = await api.createSession(T, 'NEW11', ['skill'], 'a', ['S1']);
+    await api.closeSession(T, s.id);
+    const recent = await api.recentSessions(T);
     expect(recent[0].id).toBe(s.id);
     expect(recent[0].status).toBe('closed');
     for (let i = 1; i < recent.length; i++) expect(recent[i - 1].created_at >= recent[i].created_at).toBe(true);
-    const r = await api.reopenSession(DEMO_PASSCODE, s.id);
+    const r = await api.reopenSession(T, s.id);
     expect(r.status).toBe('open');
     await expect(api.joinSession('new11')).resolves.toMatchObject({ problem_ids: ['S1'] });
   });
   it('refuses to reopen while the chapter has another open session, or with the wrong passcode', async () => {
     const api = make();
-    const a = await api.createSession(DEMO_PASSCODE, 'BUSY1', ['skill'], null);
-    await api.closeSession(DEMO_PASSCODE, a.id);
-    await api.createSession(DEMO_PASSCODE, 'BUSY1', ['skill'], null);
-    expect(await code(api.reopenSession(DEMO_PASSCODE, a.id))).toBe('chapter_busy');
+    const T = await signIn(api);
+    const a = await api.createSession(T, 'BUSY1', ['skill'], null);
+    await api.closeSession(T, a.id);
+    await api.createSession(T, 'BUSY1', ['skill'], null);
+    expect(await code(api.reopenSession(T, a.id))).toBe('chapter_busy');
     expect(await code(api.reopenSession('nope', a.id))).toBe('bad_passcode');
-    expect(await code(api.reopenSession(DEMO_PASSCODE, 'missing'))).toBe('not_found');
+    expect(await code(api.reopenSession(T, 'missing'))).toBe('not_found');
   });
   it('a seeded closed session can be reopened and closed again', async () => {
     const api = make();
-    const closed = (await api.recentSessions(DEMO_PASSCODE)).find((r) => r.status === 'closed' && !seed.sessions.some((x) => x.chapter_code === r.chapter_code && x.status === 'open'))!;
-    await api.reopenSession(DEMO_PASSCODE, closed.id);
-    expect((await api.openSessions(DEMO_PASSCODE)).some((o) => o.id === closed.id)).toBe(true);
-    await api.closeSession(DEMO_PASSCODE, closed.id);
-    expect((await api.openSessions(DEMO_PASSCODE)).some((o) => o.id === closed.id)).toBe(false);
+    const T = await signIn(api);
+    const closed = (await api.recentSessions(T)).find((r) => r.status === 'closed' && !seed.sessions.some((x) => x.chapter_code === r.chapter_code && x.status === 'open'))!;
+    await api.reopenSession(T, closed.id);
+    expect((await api.openSessions(T)).some((o) => o.id === closed.id)).toBe(true);
+    await api.closeSession(T, closed.id);
+    expect((await api.openSessions(T)).some((o) => o.id === closed.id)).toBe(false);
   });
 });
 
 describe('student join errors (mock)', () => {
   it('tells a closed session from an unknown code', async () => {
     const api = make();
-    const s = await api.createSession(DEMO_PASSCODE, 'END22', ['skill'], null);
-    await api.closeSession(DEMO_PASSCODE, s.id);
+    const T = await signIn(api);
+    const s = await api.createSession(T, 'END22', ['skill'], null);
+    await api.closeSession(T, s.id);
     expect(await code(api.joinSession('END22'))).toBe('session_closed');
     expect(await code(api.joinSession('ZZZZ9'))).toBe('not_found');
   });

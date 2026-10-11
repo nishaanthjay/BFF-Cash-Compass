@@ -27,7 +27,7 @@ export function Landing() {
           <h1 className={s.title}>
             How good is your <mark>money sense?</mark>
           </h1>
-          <p className={s.lede}>A quick check-in for grades 6 to 8. Your chapter leader will give you a join code.</p>
+          <p className={s.lede}>A quick check-in for grades 6 to 8. Your workshop organizer will give you a join code.</p>
           <div className={s.cta}>
             <Link to="/join" className={s.ctaLink}>
               <Button size="lg" block tabIndex={-1}>

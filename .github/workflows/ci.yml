@@ -3,6 +3,29 @@ on:
   push:
   pull_request:
 jobs:
+  sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the Supabase roles and a scratch database
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "create role anon nologin" -c "create role authenticated nologin" -c "create role service_role nologin" -c "create database scratch"
+      - name: Apply the migrations
+        run: for f in supabase/migrations/*.sql; do echo "== $f"; psql -v ON_ERROR_STOP=1 -q -d scratch -f "$f"; done
+      - name: Smoke test (passcode lockout, tokens, auto-close, grants)
+        run: psql -v ON_ERROR_STOP=1 -q -d scratch -f supabase/tests/smoke.sql
   test:
     runs-on: ubuntu-latest
     steps:

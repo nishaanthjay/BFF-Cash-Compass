@@ -23,7 +23,7 @@ npm run dev                    # http://localhost:5173
 | `/facilitator` | Your passcode → **Quick start** (random 5, automatic code) or set it up yourself → project code + QR. Copy link, full-screen code, reopen or duplicate recent sessions |
 | `/analysis` | Same passcode → Problems, Teach first, Students, Quality tabs; CSV export |
 
-The facilitator passcode is **not in the code**. It lives (hashed) in your Supabase database; set it with the SQL in step 3 below.
+The facilitator passcode is **not in the code**. It lives (salted bcrypt hash) in your Supabase database; set it with `set_facilitator_passcode` as in step 3 below. See [SECURITY.md](SECURITY.md).
 
 **Local-only demo data:** put `VITE_DEMO=1` in `.env.local` to run against in-browser fake data with the passcode `demo`. This is for development and
 screenshots; production builds never include it, and without Supabase keys a deployed site shows a "Not set up yet" page.
@@ -104,16 +104,17 @@ answers only for an **open** session, so leave sessions open a few minutes after
 
 ### 1. Supabase
 1. Create a free project.
-2. Run the migrations in `supabase/migrations/` in order (`0001` … `0006`), in the SQL editor or with `supabase db push`.
-3. **Set the facilitator passcode** (the migration installs a placeholder):
+2. Run the migrations in `supabase/migrations/` in order (`0001` … `0007`), in the SQL editor or with `supabase db push`. Deploy the matching app build at the same time: `0007` changes the facilitator functions, so an older build can no longer sign in.
+3. **Set the facilitator passcode** (migration `0007` replaces the placeholder with an unknown random one, so the facilitator pages stay locked until you do this):
    ```sql
-   update public.app_config set passcode_hash = crypt('your-long-passcode', gen_salt('bf', 10));
+   select public.set_facilitator_passcode('your long passcode, at least 12 characters');
    ```
+   Delete that snippet from the SQL editor history afterwards, or use the `psql` form in [SECURITY.md](SECURITY.md) so the passcode never touches a file.
 4. Copy the **Project URL** and the **publishable key** (Settings → API Keys). Do not use the secret key.
 
 Security model: RLS on every table with **no policies**, all table privileges revoked from `anon`. The browser can only call
-SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (open sessions, rate-limited), the passcode-gated
-`fac_*` functions and `export_data`, and `heartbeat`. `supabase/tests/smoke.sql` exercises all of it as the `anon` role
+SECURITY DEFINER functions: `join_session`, `resume_student`, `sync_answers` (open sessions, rate-limited), `heartbeat`, `fac_login` (throttled passcode check that returns a token), and the token-gated
+`fac_*` functions and `export_data`. `supabase/tests/smoke.sql` exercises all of it as the `anon` role
 (run it after the migrations on a database that has `anon` and `authenticated` roles; it passes on Postgres 16).
 
 ### 2. Vercel
@@ -199,12 +200,12 @@ supabase/                migrations + SQL smoke test
 ## Decisions and assumptions
 
 - **Single-phase.** Taken once; no PRE/POST/DELAYED.
-- **Migrations.** `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions), `0006` adds recent/reopen sessions and a clear "session ended" error for students.
+- **Migrations.** `0007` hardens the facilitator login (throttled `fac_login`, tokens), auto-closes sessions after 6 hours, throttles wrong join codes and trims function grants. `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions), `0006` adds recent/reopen sessions and a clear "session ended" error for students.
 - **Join model.** Chapter code alone; one open session per chapter.
 - **Truth snapshot.** Each answer stores its correct value at answer time, so later item edits don't rewrite past results.
 - **Chart colours.** Correct = Ledger Blue, named wrong pattern = pink `#DB2777`, unclassified = gray, validated with a colour-vision check; shapes and labels carry meaning too. Gold marks the headline finding.
 - **Brand colours.** `#0077B5` and `#FECE66` come from DESIGN.md and could **not** be checked against bffamerica.org (network blocked). Please verify.
 - **Logo.** Placeholder text wordmark in `src/components/Wordmark.tsx`; swap in the official asset.
 - **Tap-based stack/rank.** Stack and rank inputs use tap-to-add plus arrows and drag-to-reorder, not drag-from-pool, which is unreliable on touch.
-- **Passcode.** One shared passcode in sessionStorage; wrong guesses are slowed server-side.
+- **Passcode.** One shared passcode, checked once by `fac_login`; the browser keeps only a short-lived token in sessionStorage. Repeated wrong guesses lock the login for 15 minutes.
 - **Hex outside tokens.** `index.html` (theme-color) and `public/favicon.svg` contain hex, outside `src/`.

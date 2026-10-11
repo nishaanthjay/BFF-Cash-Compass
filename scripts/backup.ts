@@ -13,7 +13,12 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !MC_PASSCODE) {
 }
 
 const api = createSupabaseApi(SUPABASE_URL, SUPABASE_ANON_KEY);
-const data = await api.exportData(MC_PASSCODE);
+const token = await api.login(MC_PASSCODE);
+if (!token) {
+  console.error('Login failed: MC_PASSCODE does not match the facilitator passcode');
+  process.exit(1);
+}
+const data = await api.exportData(token);
 const stamp = new Date().toISOString().slice(0, 10);
 mkdirSync('backups', { recursive: true });
 writeFileSync(`backups/money-check-${stamp}.csv`, responsesToCsv(data.responses, data.recodes));

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, normalizeChapter, type ApiClient, type ApiErrorCode, type ExportData, type OpenSession, type RecentSession, type Session } from './types';
 
-const KNOWN: ApiErrorCode[] = ['rate_limited', 'not_found', 'session_closed', 'bad_passcode', 'invalid', 'chapter_busy'];
+const KNOWN: ApiErrorCode[] = ['rate_limited', 'not_found', 'session_closed', 'bad_passcode', 'locked_out', 'invalid', 'chapter_busy'];
 
 function toApiError(err: { message?: string } | null | undefined): ApiError {
   const msg = err?.message ?? '';
@@ -33,19 +33,19 @@ export function createSupabaseApi(url: string, anonKey: string): ApiClient {
     },
     resumeStudent: (sessionId, code) => rpc('resume_student', { p_session_id: sessionId, p_student_code: code }),
     sync: (token, students, answers) => rpc('sync_answers', { p_device_token: token, p_students: students, p_answers: answers }),
-    verifyPasscode: (p) => rpc<boolean>('fac_verify', { p_passcode: p }),
-    createSession: (p, code, modules, cohort, problemIds = []) => rpc<Session>('fac_create_session', { p_passcode: p, p_chapter: normalizeChapter(code), p_modules: modules, p_cohort: cohort, p_problems: problemIds }),
-    openSessions: (p) => rpc<OpenSession[]>('fac_open_sessions', { p_passcode: p }),
-    recentSessions: (p) => rpc<RecentSession[]>('fac_recent_sessions', { p_passcode: p, p_limit: 15 }),
-    reopenSession: (p, id) => rpc<Session>('fac_reopen_session', { p_passcode: p, p_session_id: id }),
-    sessionStats: (p, id) => rpc('fac_session_stats', { p_passcode: p, p_session_id: id }),
+    login: async (p) => (await rpc<string | null>('fac_login', { p_passcode: p })) || null,
+    createSession: (p, code, modules, cohort, problemIds = []) => rpc<Session>('fac_create_session', { p_token: p, p_chapter: normalizeChapter(code), p_modules: modules, p_cohort: cohort, p_problems: problemIds }),
+    openSessions: (p) => rpc<OpenSession[]>('fac_open_sessions', { p_token: p }),
+    recentSessions: (p) => rpc<RecentSession[]>('fac_recent_sessions', { p_token: p, p_limit: 15 }),
+    reopenSession: (p, id) => rpc<Session>('fac_reopen_session', { p_token: p, p_session_id: id }),
+    sessionStats: (p, id) => rpc('fac_session_stats', { p_token: p, p_session_id: id }),
     closeSession: async (p, id) => {
-      await rpc('fac_close_session', { p_passcode: p, p_session_id: id });
+      await rpc('fac_close_session', { p_token: p, p_session_id: id });
     },
     exportData: (p, f = {}) =>
-      rpc<ExportData>('export_data', { p_passcode: p, p_session_id: f.session_id ?? null, p_chapter: f.chapter ?? null, p_from: f.from ?? null, p_to: f.to ?? null }),
+      rpc<ExportData>('export_data', { p_token: p, p_session_id: f.session_id ?? null, p_chapter: f.chapter ?? null, p_from: f.from ?? null, p_to: f.to ?? null }),
     recode: async (p, answerId, codes, tag) => {
-      await rpc('fac_recode', { p_passcode: p, p_answer_id: answerId, p_codes: codes, p_tag: tag ?? null });
+      await rpc('fac_recode', { p_token: p, p_answer_id: answerId, p_codes: codes, p_tag: tag ?? null });
     },
   };
 }

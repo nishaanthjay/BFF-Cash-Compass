@@ -17,7 +17,7 @@ function lazySupabase(url: string, key: string): ApiClient {
     joinSession: (...a) => get().then((c) => c.joinSession(...a)),
     resumeStudent: (...a) => get().then((c) => c.resumeStudent(...a)),
     sync: (...a) => get().then((c) => c.sync(...a)),
-    verifyPasscode: (...a) => get().then((c) => c.verifyPasscode(...a)),
+    login: (...a) => get().then((c) => c.login(...a)),
     createSession: (...a) => get().then((c) => c.createSession(...a)),
     openSessions: (...a) => get().then((c) => c.openSessions(...a)),
     recentSessions: (...a) => get().then((c) => c.recentSessions(...a)),
@@ -38,7 +38,7 @@ function lazyMock(): ApiClient {
     joinSession: (...a) => get().then((c) => c.joinSession(...a)),
     resumeStudent: (...a) => get().then((c) => c.resumeStudent(...a)),
     sync: (...a) => get().then((c) => c.sync(...a)),
-    verifyPasscode: (...a) => get().then((c) => c.verifyPasscode(...a)),
+    login: (...a) => get().then((c) => c.login(...a)),
     createSession: (...a) => get().then((c) => c.createSession(...a)),
     openSessions: (...a) => get().then((c) => c.openSessions(...a)),
     recentSessions: (...a) => get().then((c) => c.recentSessions(...a)),
@@ -53,7 +53,7 @@ function lazyMock(): ApiClient {
 /** Used only when nothing is configured; the app shows a setup screen instead of calling it. */
 function unconfigured(): ApiClient {
   const fail = () => Promise.reject(new ApiError('network', 'The server is not configured'));
-  return { mode: 'supabase', joinSession: fail, resumeStudent: fail, sync: fail, verifyPasscode: fail, createSession: fail, openSessions: fail, recentSessions: fail, reopenSession: fail, sessionStats: fail, closeSession: fail, exportData: fail, recode: fail };
+  return { mode: 'supabase', joinSession: fail, resumeStudent: fail, sync: fail, login: fail, createSession: fail, openSessions: fail, recentSessions: fail, reopenSession: fail, sessionStats: fail, closeSession: fail, exportData: fail, recode: fail };
 }
 
 /** One client for the whole app: the in-browser mock only with VITE_DEMO=1, otherwise Supabase. */

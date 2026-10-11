@@ -18,6 +18,8 @@ export interface Session {
   problem_ids?: string[];
   status: SessionStatus;
   created_at: string;
+  /** When the session was last opened (reopening restarts the auto-close clock). */
+  opened_at?: string;
   closed_at: string | null;
 }
 
@@ -107,7 +109,7 @@ export interface SyncResult {
   rejected: string[];
 }
 
-export type ApiErrorCode = 'network' | 'rate_limited' | 'not_found' | 'session_closed' | 'bad_passcode' | 'invalid' | 'chapter_busy';
+export type ApiErrorCode = 'network' | 'rate_limited' | 'not_found' | 'session_closed' | 'bad_passcode' | 'locked_out' | 'invalid' | 'chapter_busy';
 
 export class ApiError extends Error {
   constructor(
@@ -126,8 +128,10 @@ export interface ApiClient {
   /** Step ids (item_id.step_id) already stored for this code in this session, for resume. */
   resumeStudent(sessionId: string, studentCode: string): Promise<{ locked: string[] } | null>;
   sync(deviceToken: string, students: StudentRow[], answers: AnswerRow[]): Promise<SyncResult>;
-  // Facilitator (single shared passcode)
-  verifyPasscode(passcode: string): Promise<boolean>;
+  // Facilitator. The shared passcode is checked once by login(), which returns a short-lived token.
+  // Every method below takes that token (the parameter is still called `passcode` in the signatures).
+  /** Resolves with a session token, or null for a wrong passcode. Throws locked_out after too many failures. */
+  login(passcode: string): Promise<string | null>;
   createSession(passcode: string, chapterCode: string, modules: Module[], cohortLabel: string | null, problemIds?: string[]): Promise<Session>;
   openSessions(passcode: string): Promise<OpenSession[]>;
   /** Latest sessions of any status, newest first. */
@@ -140,7 +144,12 @@ export interface ApiClient {
   recode(passcode: string, answerId: string, codes: Code[], tag?: string | null): Promise<void>;
 }
 
+/** Facilitator-typed chapter codes may be 3–10 characters. */
 export const CHAPTER_CODE = /^[A-Z0-9]{3,10}$/;
+/** Automatic codes are at least this long, so they can't be guessed by trying a few. */
+export const AUTO_CODE_LENGTH = 6;
+/** Sessions close by themselves this many hours after they were opened (mirrors app_config.session_ttl). */
+export const SESSION_TTL_HOURS = 6;
 
 export function normalizeChapter(input: string): string {
   return input.toUpperCase().replace(/[^A-Z0-9]/g, '');

@@ -1,4 +1,5 @@
-import type { AnswerRow, ExportData, ResponseRow, StudentRow } from '../src/api/types';
+import { DEMO_PASSCODE } from '../src/api/mock';
+import type { ApiClient, AnswerRow, ExportData, ResponseRow, StudentRow } from '../src/api/types';
 import type { Code } from '../src/items/families';
 
 let n = 0;
@@ -50,4 +51,11 @@ export function dataset(rows: ResponseRow[], students: StudentRow[]): ExportData
     responses: rows,
     recodes: [],
   };
+}
+
+/** Sign in to a mock API and return the facilitator token every other call needs. */
+export async function signIn(api: ApiClient): Promise<string> {
+  const token = await api.login(DEMO_PASSCODE);
+  if (!token) throw new Error('demo login failed');
+  return token;
 }

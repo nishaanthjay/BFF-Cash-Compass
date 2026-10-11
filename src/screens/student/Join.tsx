@@ -28,11 +28,11 @@ function messageFor(e: unknown): string {
     case 'not_found':
       return 'We can’t find that code. Check the screen at the front of the room (letters and numbers only).';
     case 'session_closed':
-      return 'This session has ended. Ask your facilitator to reopen it.';
+      return 'This session has ended. Ask your workshop organizer to open it again.';
     case 'network':
       return 'Can’t reach Cash Compass right now. Check the wifi and try again.';
     case 'rate_limited':
-      return 'Too many tries from this device. Wait a minute and try again.';
+      return 'Too many tries from this device. Wait a few minutes and try again.';
     default:
       return 'Something went wrong. Try again in a moment.';
   }

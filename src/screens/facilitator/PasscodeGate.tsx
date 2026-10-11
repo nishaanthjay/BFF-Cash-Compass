@@ -12,7 +12,10 @@ import { StaffShell } from '../../components/StaffShell';
 import { clearPasscode, getPasscode, setPasscode } from '../../lib/passcode';
 import s from './PasscodeGate.module.css';
 
-/** Single shared passcode for facilitator + analysis. No accounts, no roles. */
+/**
+ * Single shared passcode for facilitator + analysis. No accounts, no roles. The passcode is checked once by the server,
+ * which hands back a short-lived token; only the token is kept (in sessionStorage) and sent with later calls.
+ */
 export function PasscodeGate({ children }: { children: (passcode: string, lock: () => void) => ReactNode }) {
   const [pass, setPass] = useState<string | null>(getPasscode);
   const [input, setInput] = useState('');
@@ -31,12 +34,21 @@ export function PasscodeGate({ children }: { children: (passcode: string, lock: 
     setBusy(true);
     setError(null);
     try {
-      if (await api.verifyPasscode(input)) {
-        setPasscode(input);
-        setPass(input);
+      const token = await api.login(input);
+      if (token) {
+        setPasscode(token);
+        setPass(token);
+        setInput('');
       } else setError('That passcode didn’t work.');
     } catch (err) {
-      setError(err instanceof ApiError && err.code === 'network' ? 'Can’t reach the server. Check the connection.' : 'That passcode didn’t work.');
+      const code = err instanceof ApiError ? err.code : null;
+      setError(
+        code === 'locked_out'
+          ? 'Too many wrong tries. Wait about 15 minutes, then try again.'
+          : code === 'network'
+            ? 'Can’t reach the server. Check the connection.'
+            : 'That passcode didn’t work.',
+      );
     } finally {
       setBusy(false);
     }

@@ -3,19 +3,27 @@ import { checkRateLimit } from '../lib/rateLimit';
 import { readJSON, writeJSON, type KV } from '../lib/storage';
 import { uuid } from '../lib/uuid';
 import { buildSeed, type SeedData } from './seed';
-import { ApiError, CHAPTER_CODE, normalizeChapter, type ApiClient, type ExportData, type ExportFilters, type Session } from './types';
+import { ApiError, CHAPTER_CODE, normalizeChapter, SESSION_TTL_HOURS, type ApiClient, type ExportData, type ExportFilters, type Session } from './types';
 
 export const DEMO_PASSCODE = 'demo';
+
+/** Mirrors app_config defaults in migration 0007. */
+export const LOGIN = { maxFailures: 8, globalMaxFailures: 40, windowMs: 15 * 60_000, tokenTtlMs: 8 * 3_600_000 } as const;
+export const SESSION_TTL_MS = SESSION_TTL_HOURS * 3_600_000;
 const KEY = 'mc.mock.db.v3';
 
 /** Things created in this browser (the seed itself is regenerated in memory on load). */
 interface LiveDB extends SeedData {
   closed: Record<string, string>; // seeded session id -> closed_at (if closed in demo)
-  reopened: Record<string, true>; // seeded session ids reopened in demo
+  reopened: Record<string, string>; // seeded session id -> when it was reopened in demo
   rateAnswers: Record<string, number[]>;
   rateStudents: Record<string, number>;
+  /** Facilitator tokens -> expiry (ms). */
+  tokens: Record<string, number>;
+  /** Failed passcode attempts: client key -> attempt times (ms). */
+  loginFailures: Record<string, number[]>;
 }
-const EMPTY: LiveDB = { sessions: [], students: [], answers: [], recodes: [], closed: {}, reopened: {}, rateAnswers: {}, rateStudents: {} };
+const empty = (): LiveDB => ({ sessions: [], students: [], answers: [], recodes: [], closed: {}, reopened: {}, rateAnswers: {}, rateStudents: {}, tokens: {}, loginFailures: {} });
 
 /**
  * In-browser stand-in for the Supabase RPCs. Enforces the same rules as the SQL
@@ -28,15 +36,21 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
   const online = opts.isOnline ?? (() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   let seed: SeedData | null = opts.seed ?? null;
   const getSeed = () => (seed ??= buildSeed(now()));
-  let live: LiveDB = { ...EMPTY, ...readJSON<Partial<LiveDB>>(kv, KEY, {}) };
+  let live: LiveDB = { ...empty(), ...readJSON<Partial<LiveDB>>(kv, KEY, {}) };
 
+  /** Sessions auto-close SESSION_TTL_MS after they were opened (the server sweeps lazily; the mock just reads it that way). */
+  const expire = <T extends Session>(x: T): T => {
+    if (x.status !== 'open') return x;
+    const opened = Date.parse(x.opened_at ?? x.created_at);
+    return now() - opened > SESSION_TTL_MS ? { ...x, status: 'closed', closed_at: new Date(opened + SESSION_TTL_MS).toISOString() } : x;
+  };
   const all = () => {
     const s = getSeed();
     return {
       sessions: [
-        ...s.sessions.map((x) => (live.reopened[x.id] ? { ...x, status: 'open' as const, closed_at: null } : live.closed[x.id] ? { ...x, status: 'closed' as const, closed_at: live.closed[x.id] } : x)),
+        ...s.sessions.map((x) => (live.reopened[x.id] ? { ...x, status: 'open' as const, closed_at: null, opened_at: live.reopened[x.id] } : live.closed[x.id] ? { ...x, status: 'closed' as const, closed_at: live.closed[x.id] } : x)),
         ...live.sessions,
-      ],
+      ].map(expire),
       students: [...s.students, ...live.students],
       answers: [...s.answers, ...live.answers],
       recodes: [...s.recodes, ...live.recodes],
@@ -46,13 +60,14 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
   async function call<T>(fn: () => T): Promise<T> {
     if (latency) await new Promise((r) => setTimeout(r, latency));
     if (!online()) throw new ApiError('network', 'You appear to be offline');
-    live = { ...EMPTY, ...readJSON<Partial<LiveDB>>(kv, KEY, {}) }; // share one demo DB across tabs
+    live = { ...empty(), ...readJSON<Partial<LiveDB>>(kv, KEY, {}) }; // share one demo DB across tabs
     const out = fn();
     writeJSON(kv, KEY, live);
     return out;
   }
-  const auth = (p: string) => {
-    if (p !== DEMO_PASSCODE) throw new ApiError('bad_passcode', 'Wrong passcode');
+  const auth = (token: string) => {
+    const exp = live.tokens[token];
+    if (!exp || exp <= now()) throw new ApiError('bad_passcode', 'Sign in again');
   };
   const sessionById = (id: string) => all().sessions.find((s) => s.id === id);
   const stats = (sessionId: string) => {
@@ -127,7 +142,23 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         return { students: nStudents, answers: nAnswers, rejected };
       }),
 
-    verifyPasscode: (p) => call(() => p === DEMO_PASSCODE),
+    login: (p) =>
+      call(() => {
+        const t = now();
+        const key = 'local';
+        for (const k of Object.keys(live.loginFailures)) live.loginFailures[k] = live.loginFailures[k].filter((x) => t - x < LOGIN.windowMs);
+        for (const k of Object.keys(live.tokens)) if (live.tokens[k] <= t) delete live.tokens[k];
+        const mine = (live.loginFailures[key] ?? []).length;
+        const everyone = Object.values(live.loginFailures).reduce((a, v) => a + v.length, 0);
+        if (mine >= LOGIN.maxFailures || everyone >= LOGIN.globalMaxFailures) throw new ApiError('locked_out', 'Too many wrong passcodes');
+        if (p === DEMO_PASSCODE) {
+          const token = uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
+          live.tokens[token] = t + LOGIN.tokenTtlMs;
+          return token;
+        }
+        (live.loginFailures[key] ??= []).push(t);
+        return null;
+      }),
 
     createSession: (p, code, modules: Module[], cohort, problemIds = []) =>
       call(() => {
@@ -136,7 +167,8 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         if (!CHAPTER_CODE.test(c)) throw new ApiError('invalid', 'Chapter codes are 3–10 letters or numbers');
         if (!modules.length) throw new ApiError('invalid', 'Pick at least one module');
         if (all().sessions.some((s) => s.chapter_code === c && s.status === 'open')) throw new ApiError('chapter_busy', 'That chapter already has an open session');
-        const s: Session = { id: uuid(), chapter_code: c, cohort_label: cohort?.trim() || null, modules, problem_ids: problemIds, status: 'open', created_at: new Date(now()).toISOString(), closed_at: null };
+        const stamp = new Date(now()).toISOString();
+        const s: Session = { id: uuid(), chapter_code: c, cohort_label: cohort?.trim() || null, modules, problem_ids: problemIds, status: 'open', created_at: stamp, opened_at: stamp, closed_at: null };
         live.sessions.push(s);
         return s;
       }),
@@ -166,12 +198,13 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         if (s.status === 'open') return s;
         if (all().sessions.some((x) => x.chapter_code === s.chapter_code && x.status === 'open' && x.id !== id)) throw new ApiError('chapter_busy', 'That chapter already has an open session');
         const mine = live.sessions.find((x) => x.id === id);
-        if (mine) Object.assign(mine, { status: 'open', closed_at: null });
+        const stamp = new Date(now()).toISOString();
+        if (mine) Object.assign(mine, { status: 'open', closed_at: null, opened_at: stamp });
         else {
-          live.reopened[id] = true;
+          live.reopened[id] = stamp;
           delete live.closed[id];
         }
-        return { ...s, status: 'open' as const, closed_at: null };
+        return { ...s, status: 'open' as const, closed_at: null, opened_at: stamp };
       }),
 
     sessionStats: (p, id) =>

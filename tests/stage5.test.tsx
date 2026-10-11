@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 afterEach(cleanup);
-import { createMockApi, DEMO_PASSCODE } from '../src/api/mock';
+import { signIn } from './fixtures';
+import { createMockApi } from '../src/api/mock';
 import { buildSeed } from '../src/api/seed';
 import type { ExportData } from '../src/api/types';
 import { ChartCard } from '../src/components/ChartCard';
@@ -34,7 +35,8 @@ describe('short sessions (random 5 / pick 5)', () => {
   });
   it('the mock stores the problems and join returns them', async () => {
     const api = createMockApi(memoryKV(), { latencyMs: 0, isOnline: () => true, seed });
-    await api.createSession(DEMO_PASSCODE, 'SHORT1', ['skill', 'feasibility', 'hybrid'], null, ['S1', 'S2', 'F2', 'S11A', 'S11B']);
+    const T = await signIn(api);
+    await api.createSession(T, 'SHORT1', ['skill', 'feasibility', 'hybrid'], null, ['S1', 'S2', 'F2', 'S11A', 'S11B']);
     const j = await api.joinSession('short1');
     expect(j.problem_ids).toEqual(['S1', 'S2', 'F2', 'S11A', 'S11B']);
   });
