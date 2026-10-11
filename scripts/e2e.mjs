@@ -1,9 +1,11 @@
 // Demo-mode walk-through + screenshots. Start the app with VITE_DEMO=1 first:
 //   VITE_DEMO=1 npx vite --port 5173   then   node scripts/e2e.mjs http://localhost:5173 screenshots
+// Default runs the 3-problem Quick check (a couple of minutes). E2E_ALL=1 runs Everything (every input type, 100+ steps).
 import { chromium } from 'playwright';
 const base = process.argv[2] ?? 'http://localhost:5173';
 const out = process.argv[3] ?? 'screenshots';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium' });
+const ALL = process.env.E2E_ALL === '1';
 const errors = [];
 const checks = [];
 const ok = (n, c) => checks.push(`${c ? 'PASS' : 'FAIL'} ${n}`);
@@ -15,6 +17,17 @@ const watch = (p) => {
   p.on('pageerror', (e) => errors.push(String(e)));
 };
 const noHScroll = (p) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+/** Visible buttons, links and fields smaller than 44 px in either direction (WCAG 2.5.8 / our 44 px minimum). */
+const smallTargets = (p) =>
+  p.evaluate(() =>
+    [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, textarea, [role=radio], [role=slider]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && (r.height < 43.5 || r.width < 43.5) && !el.closest('[aria-hidden=true]') && !el.matches('input[type=radio], input[type=checkbox]');
+      })
+      .map((el) => `${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}" ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`),
+  );
 const slug = (t) => t.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
 const unlock = async (pg) => {
   await pg.getByLabel('Passcode').fill('demo');
@@ -29,6 +42,8 @@ await f.goto(`${base}/facilitator`);
 await unlock(f);
 await f.getByLabel('Chapter code').fill('TX999');
 await f.getByLabel('Group label (optional)').fill('Grade 7 · demo');
+if (ALL) await f.getByLabel(/^Everything/).check();
+else ok('Quick check is the default mode', await f.getByLabel(/^Quick check/).isChecked());
 await f.screenshot({ path: `${out}/facilitator-new-1366.png` });
 await f.getByRole('button', { name: 'Start session' }).click();
 await f.getByText('Students: join now').waitFor();
@@ -51,7 +66,7 @@ let reloaded = false;
 let steps = 0;
 const seen = new Set();
 while (steps < 260) {
-  if (await s.getByText('All done!').isVisible().catch(() => false)) break;
+  if (await s.getByText('You finished!').isVisible().catch(() => false)) break;
   await s.getByRole('button', { name: /Lock answer|Skip/ }).waitFor();
   const title = await s.locator('h1').first().innerText();
   const partTxt = await s.getByText(/Part \d+ of \d+/).innerText();
@@ -106,6 +121,14 @@ while (steps < 260) {
   }
   globalThis.__where = `${title} part ${part}`;
   ok(`${slug(title)} part ${part}: no horizontal scroll`, await noHScroll(s));
+  if (steps === 0) {
+    ok('first step: progress dots for the problems', (await s.getByRole('list', { name: /Problem 1 of \d+/ }).count()) === 1);
+    ok('first step: a calm line under the Lock button', /Take your time|No timer|okay to be unsure|Nobody is grading|no rush|curious how you see/i.test(await s.locator('main').innerText()));
+  }
+  if (steps === 0 || steps === 4) {
+    const small = await smallTargets(s);
+    ok(`step ${steps + 1}: every tap target is at least 44 px${small.length ? ` (small: ${small.join('; ')})` : ''}`, small.length === 0);
+  }
 
   if (WANT[title]?.includes(part) && !shot.has(`${title}-${part}`)) {
     shot.add(`${title}-${part}`);
@@ -126,16 +149,22 @@ while (steps < 260) {
     }
   }
   await s.getByRole('button', { name: /Lock answer|Skip/ }).click();
+  if (steps === 0) ok('"Locked in!" shows after locking', await s.getByText('Locked in!').waitFor({ timeout: 2000 }).then(() => true, () => false));
   await s.waitForTimeout(900);
   steps++;
 }
 ok(`student never sees feedback text${feedbackSeen ? ` (saw "${feedbackSeen}")` : ''}`, !feedbackSeen);
-await s.getByText('All done!').waitFor();
+await s.getByText('You finished!').waitFor();
 await s.getByText('All answers saved').waitFor({ timeout: 240000 });
 await s.screenshot({ path: `${out}/done-375.png`, fullPage: true });
-ok(`completed ${steps} steps across all problems`, steps > 100);
-ok(`exercised every input type (${[...seen].sort().join(', ')})`, ['stack', 'curve', 'jar', 'numberLine', 'shade', 'dial', 'choice', 'typed', 'text', 'dotGrid', 'calendar', 'calendarCount', 'timeline', 'rank'].every((k) => seen.has(k)));
-ok('phone number redacted from free text', !/555-123-4567/.test(await s.evaluate(() => JSON.stringify(localStorage))));
+if (ALL) {
+  ok(`completed ${steps} steps across all problems`, steps > 100);
+  ok(`exercised every input type (${[...seen].sort().join(', ')})`, ['stack', 'curve', 'jar', 'numberLine', 'shade', 'dial', 'choice', 'typed', 'text', 'dotGrid', 'calendar', 'calendarCount', 'timeline', 'rank'].every((k) => seen.has(k)));
+  ok('phone number redacted from free text', !/555-123-4567/.test(await s.evaluate(() => JSON.stringify(localStorage))));
+} else ok(`completed ${steps} steps across the 3-problem Quick check`, steps >= 6 && steps < 40);
+ok('finish screen: code shown large with a copy button', (await s.getByRole('button', { name: /Copy my code/ }).count()) === 1);
+ok('finish screen: resume reminder and a money tip', (await s.getByText(/pick up where you left off/).count()) === 1 && (await s.getByText('Money tip').count()) === 1);
+ok('finish screen: no horizontal scroll', await noHScroll(s));
 
 // Dashboards
 const a = await ctx.newPage();

@@ -18,6 +18,22 @@
 .title {
   font-size: var(--text-2xl);
 }
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.where {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.calm {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-base);
+  color: var(--color-muted-strong);
+}
 .prompt {
   font-size: var(--text-lg);
   font-weight: var(--weight-medium);

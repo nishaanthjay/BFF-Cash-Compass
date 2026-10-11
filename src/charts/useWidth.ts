@@ -7,6 +7,7 @@ export function useWidth<T extends HTMLElement>(initial = 640) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    setW(Math.max(260, Math.round(el.getBoundingClientRect().width))); // measure before first paint, so a phone never flashes a 640px chart
     const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();

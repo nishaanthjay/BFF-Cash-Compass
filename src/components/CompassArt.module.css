@@ -1,0 +1,31 @@
+.art {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  margin-inline: auto;
+}
+.needle {
+  transform-box: view-box;
+  transform-origin: 188px 180px;
+}
+.coin {
+  transform-box: view-box;
+  transform-origin: 300px 290px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .needle {
+    animation: swing 7s ease-in-out infinite;
+  }
+  .coin {
+    animation: bob 5s ease-in-out infinite;
+  }
+}
+@keyframes swing {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(11deg); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}

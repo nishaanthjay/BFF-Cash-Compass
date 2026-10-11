@@ -108,9 +108,16 @@
   margin-bottom: var(--space-3);
 }
 .itemId {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-heading);
   font-weight: var(--weight-extrabold);
   font-size: var(--text-2xl);
+}
+.titleIcon {
+  vertical-align: middle;
+  margin-right: var(--space-1);
 }
 .muted {
   color: var(--color-muted-foreground);

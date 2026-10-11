@@ -1,3 +1,4 @@
+import { ProblemIcon } from '../../components/ProblemIcon';
 import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Lightbulb, X } from 'lucide-react';
@@ -38,7 +39,9 @@ function ItemView({ pass, lock }: { pass: string; lock: () => void }) {
   const [sel, setSel] = useState<Selection | null>(null);
   const p = getProblem(id);
   if (!p) return <Navigate to="/analysis" replace />;
-  const back = `/analysis${params.toString() ? `?${params}` : ''}`;
+  const backParams = new URLSearchParams(params);
+  backParams.set('view', 'problems'); // "All problems" goes to the problem list, not the default Teach first tab
+  const back = `/analysis?${backParams}`;
   const scope = d.session ? `${d.session.chapter_code} · ${today.format(new Date(d.session.created_at))}` : `All workshops · ${today.format(new Date())}`;
 
   return (
@@ -47,7 +50,7 @@ function ItemView({ pass, lock }: { pass: string; lock: () => void }) {
       lock={lock}
       title={
         <>
-          {p.id} · {p.title}
+          <ProblemIcon id={p.id} size="sm" className={s.titleIcon} /> {p.id} · {p.title}
         </>
       }
       sub={

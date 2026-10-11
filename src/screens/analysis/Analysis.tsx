@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
+import { ProblemIcon } from '../../components/ProblemIcon';
 import { ALL_PROBLEMS } from '../../items';
 import { MODULE_LABELS } from '../../items/types';
 import { reached, shareCorrect, stepRows } from '../../lib/analysis';
@@ -18,14 +19,15 @@ export function Analysis() {
 function Overview({ pass, lock }: { pass: string; lock: () => void }) {
   const d = useDashboard(pass, lock);
   const [params, setParams] = useSearchParams();
-  const view = (params.get('view') ?? 'problems') as View | 'problems';
+  // "Teach first" is the landing tab: the first thing a facilitator needs is where the biggest gaps are.
+  const view = (params.get('view') ?? 'teach') as View | 'problems';
   const setView = (v: string) => {
     const next = new URLSearchParams(params);
-    if (v === 'problems') next.delete('view');
+    if (v === 'teach') next.delete('view');
     else next.set('view', v);
     setParams(next, { replace: true });
   };
-  const tabs: [string, string][] = [['problems', 'Problems'], ['teach', 'Teach first'], ['students', 'Students'], ['quality', 'Quality']];
+  const tabs: [string, string][] = [['teach', 'Teach first'], ['problems', 'Problems'], ['students', 'Students'], ['quality', 'Quality']];
   const qs = new URLSearchParams({ ...(d.sessionId ? { session: d.sessionId } : {}), ...(d.projector ? { projector: '1' } : {}) }).toString();
   return (
     <DashboardShell
@@ -59,6 +61,7 @@ function Overview({ pass, lock }: { pass: string; lock: () => void }) {
                   <Link key={p.id} to={`/analysis/item/${p.id}${qs ? `?${qs}` : ''}`} className={s.itemLink}>
                     <Card tight className={s.itemCard}>
                       <span className={s.itemId}>
+                        <ProblemIcon id={p.id} size="sm" />
                         {p.id}
                       </span>
                       <strong>{p.title}</strong>

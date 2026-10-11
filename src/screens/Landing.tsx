@@ -2,6 +2,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { Clock, EyeOff, Target } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { CompassArt } from '../components/CompassArt';
 import { Footer } from '../components/Footer';
 import { IconBadge } from '../components/IconBadge';
 import { Screen } from '../components/Screen';
@@ -21,25 +22,30 @@ export function Landing() {
   const c = params.get('c');
   if (c) return <Navigate to={`/join?c=${encodeURIComponent(c)}`} replace />;
   return (
-    <StudentShell decor="landing" wiggle>
-      <Screen>
+    <StudentShell decor="none">
+      <Screen width="page">
         <div className={s.hero}>
-          <p className="eyebrow">BFF of America · Cash Compass</p>
-          <h1 className={s.title}>
-            How good is your <mark>money sense?</mark>
-          </h1>
-          <p className={s.lede}>A quick check-in for grades 6 to 8. Your workshop organizer will give you a join code.</p>
-          <div className={s.cta}>
-            <Link to="/join" className={s.ctaLink}>
-              <Button size="lg" block tabIndex={-1}>
-                Join a workshop
-              </Button>
-            </Link>
-            <Link to="/facilitator" className={s.ctaLink}>
-              <Button size="lg" variant="secondary" block tabIndex={-1}>
-                Facilitator log in
-              </Button>
-            </Link>
+          <div className={s.copy}>
+            <p className="eyebrow">BFF of America · Cash Compass</p>
+            <h1 className={s.title}>
+              How good is your <mark>money sense?</mark>
+            </h1>
+            <p className={s.lede}>A quick check-in for grades 6 to 8. Your workshop organizer will give you a join code.</p>
+            <div className={s.cta}>
+              <Link to="/join" className={s.ctaLink}>
+                <Button size="lg" block tabIndex={-1}>
+                  Join a workshop
+                </Button>
+              </Link>
+              <Link to="/facilitator" className={s.ctaLink}>
+                <Button size="lg" variant="secondary" block tabIndex={-1}>
+                  Facilitator log in
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <div className={s.art}>
+            <CompassArt />
           </div>
         </div>
         <div className={s.cards}>

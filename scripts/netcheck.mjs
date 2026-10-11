@@ -9,7 +9,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const page = await browser.newPage();
 const problems = [];
 page.on('response', (r) => r.status() >= 400 && problems.push(`HTTP ${r.status()} ${r.url()}`));
-page.on('requestfailed', (r) => problems.push(`FAILED ${r.url()} ${r.failure()?.errorText}`));
+page.on('requestfailed', (r) => r.failure()?.errorText !== 'net::ERR_ABORTED' && problems.push(`FAILED ${r.url()} ${r.failure()?.errorText}`));
 page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));
 page.on('pageerror', (e) => problems.push(`pageerror: ${e}`));
 

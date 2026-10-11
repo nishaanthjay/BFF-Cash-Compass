@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import type { ExportData } from '../../api/types';
+import { Card } from '../../components/Card';
 import { ChartCard } from '../../components/ChartCard';
+import { ProblemIcon } from '../../components/ProblemIcon';
 import { Select } from '../../components/Select';
 import { applyFilters, studentKey } from '../../lib/analysis';
 import { isSampleId } from '../../lib/sample';
-import { biasByProblem, compounding, feasibility, medianSeconds, workshopTrend, gapMap, instrumentQuality, methodComparison, problemScores, radar, studentSteps, teachFirst, unkRows, type RadarPoint } from '../../lib/crossItem';
+import { biasByProblem, GAP_LABELS, gapLevel, compounding, feasibility, medianSeconds, workshopTrend, gapMap, instrumentQuality, methodComparison, problemScores, radar, studentSteps, teachFirst, unkRows, type RadarPoint } from '../../lib/crossItem';
 import { ALL_PROBLEMS } from '../../items';
 import { CODES, FAMILY_LABELS, type Code } from '../../items/families';
 import { BiasBars, Lollipops, TrendLine } from '../../charts/Stage5';
@@ -14,6 +17,7 @@ import type { Dashboard } from './useDashboard';
 import s from './CrossItem.module.css';
 
 export type View = 'teach' | 'students' | 'quality';
+const SEV = { big: 'sevBig', some: 'sevSome', small: 'sevSmall' } as const;
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 const today = () => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -38,23 +42,74 @@ function Teach({ d, data, scores, date }: { d: Dashboard; data: ExportData; scor
   const trend = workshopTrend(d.data ?? data, d.rc, d.minCell);
   const secs = medianSeconds(data, d.minCell);
   const pretty = (c: string) => (CODES[c as Code] ? CODES[c as Code].label : c);
+  const top3 = ranked.slice(0, 3);
+  const qs = new URLSearchParams({ ...(d.sessionId ? { session: d.sessionId } : {}), ...(d.projector ? { projector: '1' } : {}) }).toString();
   return (
     <div className={s.grid}>
       <div className={s.wide}>
-        <ChartCard title="Teach first" subtitle="Problems where the fewest students were correct on the first question, biggest gap on top." n={n} date={date} tone="featured" footnote="Gap = share of scored answers that were not correct. Problems with fewer than 5 students are left out in projector mode.">
+        <section aria-labelledby="top3-h" className={s.top3Wrap}>
+          <h2 id="top3-h" className="eyebrow">
+            Teach these first
+          </h2>
+          {top3.length === 0 ? (
+            <Card tight>
+              <p>No gaps to rank yet. They appear as soon as students lock their first answers{d.projector ? ' (projector mode hides problems with fewer than 5 students)' : ''}.</p>
+            </Card>
+          ) : (
+            <ol className={s.top3}>
+              {top3.map((r, i) => {
+                const level = gapLevel(r.gap);
+                return (
+                  <li key={r.id}>
+                    <Link to={`/analysis/item/${r.id}${qs ? `?${qs}` : ''}`} className={s.top3Link}>
+                      <Card tight tone={i === 0 ? 'featured' : undefined} className={s.top3Card}>
+                        <div className={s.top3Head}>
+                          <span className={s.rankNo} aria-label={`Number ${i + 1}`}>
+                            {i + 1}
+                          </span>
+                          <ProblemIcon id={r.id} size="sm" />
+                          <span className={s.top3Id}>{r.id}</span>
+                        </div>
+                        <strong className={s.top3Title}>{r.title}</strong>
+                        <div className={s.top3Gap}>
+                          <span className={s.gapNum}>{pct(r.gap)}</span>
+                          <span>missed · {GAP_LABELS[level].toLowerCase()}</span>
+                        </div>
+                        <span className={s.track} aria-hidden>
+                          <span className={[s.fill, s[SEV[level]]].join(' ')} style={{ width: `${r.gap * 100}%` }} />
+                        </span>
+                        <span className={s.sub}>{r.topWrong ? `Most common wrong pattern: ${pretty(r.topWrong)}` : 'No single wrong pattern stands out'}</span>
+                        <span className={s.sub}>n = {r.n}</span>
+                      </Card>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      </div>
+      <div className={s.wide}>
+        <ChartCard title="Teach first: all problems ranked" subtitle="Problems where the fewest students were correct on the first question, biggest gap on top." n={n} date={date} footnote="Gap = share of scored answers that were not correct. Pink = big gap (60% or more missed), gold = some gap (30% or more), blue = small. The label always says which. Problems with fewer than 5 students are left out in projector mode.">
           <ol className={s.rank}>
-            {ranked.slice(0, 10).map((r, i) => (
-              <li key={r.id} className={[s.rankRow, i === 0 && s.top].filter(Boolean).join(' ')}>
-                <span className={s.rankLabel}>
-                  {r.id} · {r.title}
-                  {r.topWrong && <span className={s.sub}> · most common wrong pattern: {pretty(r.topWrong)}</span>}
-                </span>
-                <span className={s.track} aria-hidden>
-                  <span className={s.fill} style={{ width: `${r.gap * 100}%`, display: 'block' }} />
-                </span>
-                <span className={s.val}>{pct(r.gap)}</span>
-              </li>
-            ))}
+            {ranked.slice(0, 10).map((r) => {
+              const level = gapLevel(r.gap);
+              return (
+                <li key={r.id} className={s.rankRow}>
+                  <span className={s.rankLabel}>
+                    <ProblemIcon id={r.id} size="sm" className={s.rankIcon} /> {r.id} · {r.title}
+                    {r.topWrong && <span className={s.sub}> · most common wrong pattern: {pretty(r.topWrong)}</span>}
+                  </span>
+                  <span className={s.track} aria-hidden>
+                    <span className={[s.fill, s[SEV[level]]].join(' ')} style={{ width: `${r.gap * 100}%` }} />
+                  </span>
+                  <span className={s.val}>
+                    {pct(r.gap)}
+                    <span className={s.levelWord}>{GAP_LABELS[level]}</span>
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </ChartCard>
       </div>

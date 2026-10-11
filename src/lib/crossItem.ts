@@ -53,6 +53,14 @@ export function teachFirst(scores: ProblemScore[]): (ProblemScore & { gap: numbe
     .sort((a, b) => b.gap - a.gap || b.n - a.n);
 }
 
+export type GapLevel = 'big' | 'some' | 'small';
+export const GAP_LABELS: Record<GapLevel, string> = { big: 'Big gap', some: 'Some gap', small: 'Small gap' };
+
+/** How loud a gap is: 60%+ of students missed it is big, 30%+ is some. The word is always shown next to the colour. */
+export function gapLevel(gap: number): GapLevel {
+  return gap >= 0.6 ? 'big' : gap >= 0.3 ? 'some' : 'small';
+}
+
 export interface GapCell {
   id: string;
   family: Family;

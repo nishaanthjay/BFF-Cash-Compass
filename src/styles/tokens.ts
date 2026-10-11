@@ -70,6 +70,9 @@ export const fontPx = {
   xl: 25,
   /** "$" glyph inside the 100-unit coin graphic viewBox */
   coinGlyph: 40,
+  /** Glyphs inside the 380-unit hero compass graphic */
+  compassN: 22,
+  compassCoin: 54,
 } as const;
 
 export const fontWeight = {

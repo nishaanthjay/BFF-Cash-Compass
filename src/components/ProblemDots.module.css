@@ -1,0 +1,21 @@
+.dots {
+  display: flex;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: var(--border-width) solid var(--color-foreground);
+  background: var(--color-card);
+}
+.done {
+  background: var(--color-tertiary);
+}
+.now {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}

@@ -91,6 +91,7 @@ export function Run() {
         <Screen>
           <Done
             studentCode={run.student_code}
+            problemIds={run.sequence}
             onFinish={() => {
               clearRun(kv);
               navigate('/join');

@@ -25,7 +25,7 @@
 .link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 var(--space-4);
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-full);

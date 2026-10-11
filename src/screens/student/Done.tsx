@@ -1,22 +1,36 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { CloudCheck, CloudOff, KeyRound, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Check, CloudCheck, CloudOff, Copy, KeyRound, Lightbulb, RefreshCw, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { CoinGraphic } from '../../components/Decor';
 import { IconBadge } from '../../components/IconBadge';
+import { getProblem } from '../../items';
+import type { DecaCategory } from '../../items/types';
+import { copyText } from '../../lib/clipboard';
 import { formatCode } from '../../lib/studentCode';
 import { syncNow, useOnline, useQueue } from '../../lib/sync';
+import { tipFor } from '../../lib/tips';
 import { motion as m } from '../../styles/tokens';
 import s from './Done.module.css';
 
-type Props = { studentCode: string; onFinish: () => void };
+type Props = { studentCode: string; problemIds?: string[]; onFinish: () => void };
 
-/** Neutral finish: no score, no correct answers. */
-export function Done({ studentCode, onFinish }: Props) {
+/** Neutral finish: no score, no correct answers. Shows the student's code, how to come back, and one money tip. */
+export function Done({ studentCode, problemIds = [], onFinish }: Props) {
   const reduce = useReducedMotion();
   const q = useQueue();
   const online = useOnline();
   const pending = q.answers.length + q.students.length;
+  const [copied, setCopied] = useState<'yes' | 'no' | null>(null);
+  const categories = [...new Set(problemIds.map((id) => getProblem(id)?.deca_category).filter((c): c is DecaCategory => !!c))];
+  const tip = tipFor(categories, studentCode);
+  const shown = formatCode(studentCode);
+
+  async function copy() {
+    setCopied((await copyText(shown)) ? 'yes' : 'no');
+    setTimeout(() => setCopied(null), 2500);
+  }
 
   return (
     <div className={s.stack}>
@@ -34,15 +48,32 @@ export function Done({ studentCode, onFinish }: Props) {
             </motion.div>
           ))}
         </div>
-        <h1 className={s.title}>All done!</h1>
-        <p>Thanks for taking Cash Compass. Your facilitator will talk through these questions in the workshop.</p>
+        <h1 className={s.title}>You finished!</h1>
+        <p>Thanks for taking Cash Compass. Your workshop organizer will talk through these questions with the group.</p>
       </div>
 
+      <Card tone="featured" className={s.codeCard}>
+        <span className="eyebrow">Your code</span>
+        <p className={s.bigCode} aria-label={`Your code is ${studentCode.split('').join(' ')}`}>
+          {shown}
+        </p>
+        <Button variant="secondary" block onClick={copy}>
+          {copied === 'yes' ? <Check size={18} strokeWidth={2.5} aria-hidden /> : <Copy size={18} strokeWidth={2.5} aria-hidden />}
+          {copied === 'yes' ? 'Copied!' : copied === 'no' ? 'Press and hold the code to copy it' : 'Copy my code'}
+        </Button>
+        <span className={s.sr} role="status" aria-live="polite">
+          {copied === 'yes' ? 'Code copied' : ''}
+        </span>
+        <p className={s.resume}>
+          <KeyRound size={16} strokeWidth={2.5} aria-hidden /> Write it down. If your wifi drops or you close this page, type this code on the join screen to pick up where you left off.
+        </p>
+      </Card>
+
       <Card tight className={s.status}>
-        <IconBadge icon={KeyRound} tone="gold" />
+        <IconBadge icon={Lightbulb} tone="mint" />
         <div>
-          <strong>Your code: <span className="num">{formatCode(studentCode)}</span></strong>
-          <span>Keep it if your facilitator asks for it later.</span>
+          <strong>Money tip</strong>
+          <span>{tip.text}</span>
         </div>
       </Card>
 
@@ -72,7 +103,7 @@ export function Done({ studentCode, onFinish }: Props) {
           <IconBadge icon={TriangleAlert} tone="danger" />
           <div>
             <strong>Some answers arrived after the session closed.</strong>
-            <span>Let your facilitator know. Nothing else to do.</span>
+            <span>Let your workshop organizer know. Nothing else to do.</span>
           </div>
         </Card>
       )}

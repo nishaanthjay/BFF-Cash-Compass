@@ -1,13 +1,17 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Lock } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ProblemDots } from '../../components/ProblemDots';
+import { ProblemIcon } from '../../components/ProblemIcon';
 import { ProgressCoins } from '../../components/ProgressCoins';
 import { rankShown } from '../../lib/rank';
 import { isAnswered, StepInput } from '../../inputs/StepInput';
 import { promptFor } from '../../items';
 import { EMPTY_VALUE, type StepValue } from '../../inputs/types';
 import type { Problem, Step } from '../../items/types';
+import { calmLine } from '../../lib/microcopy';
 import { useStepTelemetry } from '../../lib/useStepTelemetry';
 import { motion as m } from '../../styles/tokens';
 import { ScenarioCard } from './Scenario';
@@ -62,14 +66,20 @@ export function StepView({ problem, step: rawStep, steps, form, seed, problemInd
         >
           <div className={s.head}>
             <div className={`eyebrow ${s.meta}`}>
-              <span className="num">
-                Problem {problemIndex + 1} of {problemCount}
+              <span className={s.where}>
+                <ProblemDots current={problemIndex} total={problemCount} />
+                <span className="num">
+                  Problem {problemIndex + 1} of {problemCount}
+                </span>
               </span>
               <span className="num">
                 Part {stepNo} of {steps.length}
               </span>
             </div>
-            <h1 className={s.title}>{problem.title}</h1>
+            <div className={s.titleRow}>
+              <ProblemIcon id={problem.id} />
+              <h1 className={s.title}>{problem.title}</h1>
+            </div>
           </div>
           <Card tight bubble>
             <ScenarioCard scenario={problem.scenario} own={own} activeStep={step.id} />
@@ -96,6 +106,7 @@ export function StepView({ problem, step: rawStep, steps, form, seed, problemInd
             <Button size="lg" block onClick={lock} disabled={!ready}>
               {step.optional && !value.text && value.raw === null && !value.choice?.length ? 'Skip' : 'Lock answer'}
             </Button>
+            <p className={s.calm}>{calmLine(problemIndex, stepNo)}</p>
           </Card>
         </motion.div>
       </AnimatePresence>
@@ -103,13 +114,22 @@ export function StepView({ problem, step: rawStep, steps, form, seed, problemInd
   );
 }
 
-/** Neutral confirmation only: never correct/incorrect. */
+/** Neutral confirmation only: never correct/incorrect. A small pop, or a plain fade when the device asks for less motion. */
 export function SavedToast({ show }: { show: boolean }) {
+  const reduce = useReducedMotion();
   return (
     <AnimatePresence>
       {show && (
-        <motion.div className={s.saved} role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-          Answer saved
+        <motion.div
+          className={s.saved}
+          role="status"
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.8 }}
+          animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={reduce ? { duration: 0.12 } : { duration: 0.28, ease: m.springCurve }}
+        >
+          <Lock size={18} strokeWidth={2.5} aria-hidden />
+          Locked in!
         </motion.div>
       )}
     </AnimatePresence>

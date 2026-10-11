@@ -18,6 +18,7 @@ import { Input } from '../../components/Input';
 import { Screen } from '../../components/Screen';
 import { StaffShell } from '../../components/StaffShell';
 import { StatTile } from '../../components/StatTile';
+import { copyText } from '../../lib/clipboard';
 import { browserKV } from '../../lib/storage';
 import { color } from '../../styles/tokens';
 import { newChapterCode } from '../../lib/chapterCode';
@@ -348,16 +349,7 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
   }
 
   async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const t = document.createElement('textarea');
-      t.value = url;
-      document.body.appendChild(t);
-      t.select();
-      document.execCommand('copy');
-      t.remove();
-    }
+    await copyText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -396,7 +388,7 @@ function LiveSession({ pass, id, chapter, onLeave, onAuthFail }: { pass: string;
         </Card>
         <Card className={s.qrCard}>
           <QRCodeSVG value={url} size={260} level="M" fgColor={color.foreground} bgColor={color.card} className={s.qr} title={`QR code for ${url}`} />
-          <span className="eyebrow">Or scan to join</span>
+          <span className={s.scan}>Or scan to join</span>
         </Card>
       </div>
 
