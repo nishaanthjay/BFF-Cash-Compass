@@ -140,6 +140,8 @@ export interface ApiClient {
   reopenSession(passcode: string, sessionId: string): Promise<Session>;
   sessionStats(passcode: string, sessionId: string): Promise<SessionStats & { status: SessionStatus }>;
   closeSession(passcode: string, sessionId: string): Promise<void>;
+  /** Students who have answered each problem so far, by problem id. Used to rotate the Quick check. */
+  problemCounts(passcode: string): Promise<Record<string, number>>;
   exportData(passcode: string, filters?: ExportFilters): Promise<ExportData>;
   recode(passcode: string, answerId: string, codes: Code[], tag?: string | null): Promise<void>;
 }

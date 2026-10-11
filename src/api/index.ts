@@ -24,6 +24,7 @@ function lazySupabase(url: string, key: string): ApiClient {
     reopenSession: (...a) => get().then((c) => c.reopenSession(...a)),
     sessionStats: (...a) => get().then((c) => c.sessionStats(...a)),
     closeSession: (...a) => get().then((c) => c.closeSession(...a)),
+    problemCounts: (...a) => get().then((c) => c.problemCounts(...a)),
     exportData: (...a) => get().then((c) => c.exportData(...a)),
     recode: (...a) => get().then((c) => c.recode(...a)),
   };
@@ -45,6 +46,7 @@ function lazyMock(): ApiClient {
     reopenSession: (...a) => get().then((c) => c.reopenSession(...a)),
     sessionStats: (...a) => get().then((c) => c.sessionStats(...a)),
     closeSession: (...a) => get().then((c) => c.closeSession(...a)),
+    problemCounts: (...a) => get().then((c) => c.problemCounts(...a)),
     exportData: (...a) => get().then((c) => c.exportData(...a)),
     recode: (...a) => get().then((c) => c.recode(...a)),
   };
@@ -53,7 +55,7 @@ function lazyMock(): ApiClient {
 /** Used only when nothing is configured; the app shows a setup screen instead of calling it. */
 function unconfigured(): ApiClient {
   const fail = () => Promise.reject(new ApiError('network', 'The server is not configured'));
-  return { mode: 'supabase', joinSession: fail, resumeStudent: fail, sync: fail, login: fail, createSession: fail, openSessions: fail, recentSessions: fail, reopenSession: fail, sessionStats: fail, closeSession: fail, exportData: fail, recode: fail };
+  return { mode: 'supabase', joinSession: fail, resumeStudent: fail, sync: fail, login: fail, createSession: fail, openSessions: fail, recentSessions: fail, reopenSession: fail, sessionStats: fail, closeSession: fail, problemCounts: fail, exportData: fail, recode: fail };
 }
 
 /** One client for the whole app: the in-browser mock only with VITE_DEMO=1, otherwise Supabase. */

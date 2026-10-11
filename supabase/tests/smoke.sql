@@ -1,4 +1,4 @@
--- Smoke test for the migrations (0001 → 0007). Run against a scratch database:
+-- Smoke test for the migrations (0001 → 0008). Run against a scratch database:
 --   psql -v ON_ERROR_STOP=1 -f supabase/tests/smoke.sql
 -- Every check raises on failure.
 \set QUIET on
@@ -139,6 +139,11 @@ begin
   if jsonb_array_length(r->'responses') <> 60 or jsonb_array_length(r->'students') <> 3 then
     raise exception 'FAIL: export % responses, % students', jsonb_array_length(r->'responses'), jsonb_array_length(r->'students');
   end if;
+  -- per-problem student counts (migration 0008): needs a token, counts students not rows
+  r := fac_problem_counts(current_setting('smoke.tok'));
+  if (r->>'S1')::int <> 1 then raise exception 'FAIL: problem counts %', r; end if;
+  begin perform fac_problem_counts('nope'); raise exception 'FAIL: problem counts without token';
+  exception when raise_exception then if sqlerrm <> 'bad_passcode' then raise; end if; end;
   perform heartbeat();
   raise notice 'ALL SMOKE CHECKS PASSED';
 end $$;
@@ -260,7 +265,7 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
      and p.proname not in ('join_session', 'resume_student', 'sync_answers', 'heartbeat', 'fac_login', 'fac_create_session', 'fac_open_sessions',
-                           'fac_recent_sessions', 'fac_reopen_session', 'fac_session_stats', 'fac_close_session', 'fac_recode', 'export_data');
+                           'fac_recent_sessions', 'fac_reopen_session', 'fac_session_stats', 'fac_close_session', 'fac_recode', 'export_data', 'fac_problem_counts');
   if bad is not null then raise exception 'FAIL: anon can execute internal functions: %', bad; end if;
   raise notice 'hardening checks passed';
 end $$;

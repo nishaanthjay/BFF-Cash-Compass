@@ -7,7 +7,7 @@ import { createMockApi } from '../src/api/mock';
 import { buildSeed } from '../src/api/seed';
 import type { ExportData } from '../src/api/types';
 import { ChartCard } from '../src/components/ChartCard';
-import { ALL_PROBLEMS, pickUnits, problemsFor, SHORT_SESSION_SIZE } from '../src/items';
+import { ALL_PROBLEMS, pickUnits, problemsFor } from '../src/items';
 import { recodeMap } from '../src/lib/analysis';
 import { biasByProblem, boxStats, ecdf, medianSeconds, workshopTrend } from '../src/lib/crossItem';
 import { assignForms, orderPairs } from '../src/lib/forms';
@@ -23,7 +23,9 @@ const data: ExportData = {
   recodes: seed.recodes,
 };
 
-describe('short sessions (random 5 / pick 5)', () => {
+const PICK_COUNT = 5;
+
+describe('short sessions (hand-picked problems)', () => {
   it('problemsFor uses exact ids when given, modules otherwise', () => {
     expect(problemsFor(['skill', 'feasibility', 'hybrid'], ['S1', 'F2']).map((p) => p.id).sort()).toEqual(['F2', 'S1']);
     expect(problemsFor(['hybrid'])).toHaveLength(2);
@@ -43,7 +45,7 @@ describe('short sessions (random 5 / pick 5)', () => {
   it('an order for any 5 picks is built without relaxing the rules, across many students', () => {
     const units = pickUnits();
     for (let i = 0; i < 200; i++) {
-      const keys = [...units].sort(() => Math.random() - 0.5).slice(0, SHORT_SESSION_SIZE);
+      const keys = [...units].sort(() => Math.random() - 0.5).slice(0, PICK_COUNT);
       const probs = problemsFor(['skill', 'feasibility', 'hybrid'], keys.flatMap((k) => k.ids));
       const code = `T${String(i).padStart(5, '0')}`;
       const { ids } = buildOrder(probs, code, orderPairs(probs, assignForms(probs, code)));

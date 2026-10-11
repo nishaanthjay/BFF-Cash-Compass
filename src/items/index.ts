@@ -20,7 +20,12 @@ export function problemsFor(modules: Module[], ids: string[] = []): Problem[] {
   return ALL_PROBLEMS.filter((p) => p.active && modules.includes(p.module));
 }
 
-export const SHORT_SESSION_SIZE = 5;
+/** Quick check: one Skill, one Feasibility and one Hybrid problem per student. */
+export const QUICK_CHECK_SIZE = 3;
+/** The most problems a facilitator can hand-pick for a session. */
+export const MAX_PICKS = 10;
+/** Average time per problem, used for every "about N minutes" claim in the app. */
+export const MINUTES_PER_PROBLEM = 2.8;
 
 /** One pick in the facilitator's list: problems that share a form key (S11A + S11B) always travel together. */
 export interface PickUnit {
@@ -67,12 +72,17 @@ export function correctOf(step: Step, prior: Prior = {}): number | null {
   return typeof step.correct === 'function' ? step.correct(prior) : step.correct;
 }
 
-/** Minutes estimate for the facilitator (≈25 s per numeric step, 12 s per rating/choice). */
-export function estimateMinutes(problems: Problem[]): number {
-  const base = (s: Step) => (s.input.type === 'dial' || s.input.type === 'choice' ? 12 : s.input.type === 'text' ? 40 : s.input.type === 'rank' || s.input.type === 'calendar' || s.input.type === 'stack' ? 35 : 25);
-  const weight = (p: Problem, s: Step) => (s.forms && p.form ? s.forms.length / p.form.options.length : 1);
-  const secs = problems.reduce((a, p) => a + p.steps.reduce((b, s) => b + base(s) * weight(p, s), 0), 0);
-  return Math.max(1, Math.round(secs / 60));
+/** Minutes a student needs for this many problems (MINUTES_PER_PROBLEM each). One number, used everywhere. */
+export function minutesFor(problemCount: number): number {
+  return Math.max(1, Math.round(problemCount * MINUTES_PER_PROBLEM));
 }
+
+/** Minutes estimate for a set of problems. */
+export function estimateMinutes(problems: Problem[]): number {
+  return minutesFor(problems.length);
+}
+
+/** "About 8 minutes" for the Quick check, as shown on the home, join and facilitator screens. */
+export const QUICK_CHECK_MINUTES = minutesFor(QUICK_CHECK_SIZE);
 
 export type { Problem, Step } from './types';

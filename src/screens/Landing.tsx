@@ -6,10 +6,11 @@ import { Footer } from '../components/Footer';
 import { IconBadge } from '../components/IconBadge';
 import { Screen } from '../components/Screen';
 import { StudentShell } from '../components/StudentShell';
+import { QUICK_CHECK_MINUTES } from '../items';
 import s from './Landing.module.css';
 
 const POINTS = [
-  { icon: Clock, tone: 'gold', title: 'Short', text: 'About 10 minutes of real-life money questions.' },
+  { icon: Clock, tone: 'gold', title: 'Short', text: `About ${QUICK_CHECK_MINUTES} minutes of real-life money questions.` },
   { icon: Target, tone: 'blue', title: 'No grades', text: 'Nothing is scored in front of you. Just your best estimate.' },
   { icon: EyeOff, tone: 'mint', title: 'Private', text: 'No names, no emails. You get a random code.' },
 ] as const;

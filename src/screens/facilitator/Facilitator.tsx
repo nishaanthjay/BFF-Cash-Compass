@@ -1,19 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCheck, Copy, ListChecks, Maximize2, Play, RotateCcw, Shuffle, Users, Zap } from 'lucide-react';
+import { CheckCheck, Copy, ListChecks, Maximize2, Play, RotateCcw, Users, Zap } from 'lucide-react';
 import { api } from '../../api';
 import { ApiError, CHAPTER_CODE, normalizeChapter, type OpenSession, type RecentSession, type SessionStats, type SessionStatus } from '../../api/types';
-import { estimateMinutes, pickUnits, problemsFor, SHORT_SESSION_SIZE, type PickUnit } from '../../items';
+import { estimateMinutes, MAX_PICKS, pickUnits, problemsFor, QUICK_CHECK_MINUTES, QUICK_CHECK_SIZE } from '../../items';
+import { selectQuickCheck, type ProblemCounts } from '../../items/select';
 import { MODULE_LABELS, type Module } from '../../items/types';
 
 const ALL_MODULES = Object.keys(MODULE_LABELS) as Module[];
-type Mode = 'random' | 'pick' | 'all';
-const draw = (units: PickUnit[]) =>
-  [...units]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, SHORT_SESSION_SIZE)
-    .map((u) => u.key);
+type Mode = 'quick' | 'pick' | 'all';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { FieldError } from '../../components/FieldError';
@@ -63,13 +59,15 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
   const [recent, setRecent] = useState<RecentSession[]>([]);
   const [code, setCode] = useState('');
   const units = pickUnits();
-  const [mode, setMode] = useState<Mode>('random');
-  const [drawn, setDrawn] = useState<string[]>(() => draw(units));
+  const [mode, setMode] = useState<Mode>('quick');
+  // The Quick check rotates: one problem per module, the ones the fewest students have answered so far.
+  const [counts, setCounts] = useState<ProblemCounts | null>(null);
+  const quick = useMemo(() => selectQuickCheck(counts ?? {}), [counts]);
   const [picked, setPicked] = useState<string[]>([]);
-  const chosen = mode === 'random' ? drawn : mode === 'pick' ? picked : [];
+  const chosen = mode === 'quick' ? quick.map((q) => q.unit.key) : mode === 'pick' ? picked : [];
   const chosenIds = units.filter((u) => chosen.includes(u.key)).flatMap((u) => u.ids);
   const sessionProblems = mode === 'all' ? problemsFor(ALL_MODULES) : problemsFor(ALL_MODULES, chosenIds);
-  const ready = mode === 'all' || chosen.length === SHORT_SESSION_SIZE;
+  const ready = mode === 'all' || (mode === 'quick' ? quick.length === QUICK_CHECK_SIZE : picked.length >= 1);
   const [cohort, setCohort] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,6 +82,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     try {
       setOpen(await api.openSessions(pass));
       setRecent(await api.recentSessions(pass).catch(() => []));
+      setCounts(await api.problemCounts(pass).catch(() => ({})));
     } catch (e) {
       if (e instanceof ApiError && e.code === 'bad_passcode') lock();
       else setError(errText(e));
@@ -125,9 +124,11 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
     await start({ code: c, label: cohort, modules: ALL_MODULES, ids: mode === 'all' ? [] : chosenIds });
   }
 
-  const quickStart = () => {
-    const keys = draw(units);
-    return start({ label: cohort, modules: ALL_MODULES, ids: units.filter((u) => keys.includes(u.key)).flatMap((u) => u.ids) });
+  /** One tap: look up the latest per-problem counts, pick the Quick check, and start. */
+  const quickStart = async () => {
+    const fresh = await api.problemCounts(pass).catch(() => counts ?? {});
+    const ids = selectQuickCheck(fresh).flatMap((q) => q.unit.ids);
+    return start({ label: cohort, modules: ALL_MODULES, ids });
   };
 
   async function reopen(id: string, chapter: string) {
@@ -163,9 +164,9 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                 <form className={s.form} onSubmit={create} noValidate>
                   <h2 id="new-h">New session</h2>
                   <Button type="button" size="lg" block onClick={quickStart} disabled={busy}>
-                    <Zap size={20} strokeWidth={2.5} aria-hidden /> Quick start · Random 5
+                    <Zap size={20} strokeWidth={2.5} aria-hidden /> Quick start · {QUICK_CHECK_SIZE} questions
                   </Button>
-                  <p className={s.muted}>One tap: 5 random problems and an automatic join code. Or set it up yourself below.</p>
+                  <p className={s.muted}>One tap: the Quick check (about {QUICK_CHECK_MINUTES} minutes) and an automatic join code. Or set it up yourself below.</p>
                   <Input
                     label="Chapter code (optional)"
                     code
@@ -179,8 +180,8 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                   <fieldset className={s.modules}>
                     <legend className="eyebrow">Questions</legend>
                     {([
-                      ['random', 'Random 5', 'A quick check. We pick 5 problems for the whole group.'],
-                      ['pick', 'I’ll pick 5', 'Choose the 5 problems you want to teach around.'],
+                      ['quick', `Quick check · about ${QUICK_CHECK_MINUTES} minutes`, 'One Skill, one Feasibility and one Hybrid problem. We rotate them so every problem gets answers over time.'],
+                      ['pick', 'I’ll pick', `Choose up to ${MAX_PICKS} problems to teach around.`],
                       ['all', 'Everything', 'Every problem. Long: plan for a full workshop.'],
                     ] as [Mode, string, string][]).map(([m, label, hint]) => (
                       <label key={m} className={s.moduleRow}>
@@ -190,22 +191,22 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                         </span>
                       </label>
                     ))}
-                    {mode === 'random' && (
+                    {mode === 'quick' && (
                       <div className={s.picks}>
                         <ul className={s.pickList}>
-                          {units.filter((u) => drawn.includes(u.key)).map((u) => (
-                            <li key={u.key}>{u.title}</li>
+                          {quick.map((q) => (
+                            <li key={q.unit.key}>
+                              {q.unit.title} <span className={s.muted}>· {q.n === 0 ? 'no answers yet' : `${q.n} student${q.n === 1 ? '' : 's'} so far`}</span>
+                            </li>
                           ))}
                         </ul>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => setDrawn(draw(units))}>
-                          <Shuffle size={16} strokeWidth={2.5} aria-hidden /> Shuffle
-                        </Button>
+                        <p className={s.muted}>Each time, the problem in each group that the fewest students have answered.</p>
                       </div>
                     )}
                     {mode === 'pick' && (
                       <div className={s.picks}>
                         <p className={`${s.muted} num`} aria-live="polite">
-                          {picked.length} of {SHORT_SESSION_SIZE} chosen
+                          {picked.length} of up to {MAX_PICKS} chosen
                         </p>
                         {ALL_MODULES.map((m) => (
                           <div key={m}>
@@ -217,7 +218,7 @@ function FacilitatorHome({ pass, lock }: { pass: string; lock: () => void }) {
                                   <input
                                     type="checkbox"
                                     checked={on}
-                                    disabled={!on && picked.length >= SHORT_SESSION_SIZE}
+                                    disabled={!on && picked.length >= MAX_PICKS}
                                     onChange={(e) => setPicked(e.target.checked ? [...picked, u.key] : picked.filter((k) => k !== u.key))}
                                   />
                                   <span>{u.title}</span>

@@ -230,6 +230,18 @@ export function createMockApi(kv: KV, opts: { latencyMs?: number; now?: () => nu
         }
       }),
 
+    problemCounts: (p) =>
+      call(() => {
+        auth(p);
+        const seen = new Map<string, Set<string>>();
+        for (const x of all().answers) {
+          const set = seen.get(x.item_id) ?? new Set<string>();
+          set.add(`${x.session_id}:${x.student_code}`);
+          seen.set(x.item_id, set);
+        }
+        return Object.fromEntries([...seen].map(([id, set]) => [id, set.size]));
+      }),
+
     exportData: (p, f: ExportFilters = {}) =>
       call((): ExportData => {
         auth(p);

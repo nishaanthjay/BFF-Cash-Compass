@@ -42,6 +42,7 @@ export function createSupabaseApi(url: string, anonKey: string): ApiClient {
     closeSession: async (p, id) => {
       await rpc('fac_close_session', { p_token: p, p_session_id: id });
     },
+    problemCounts: async (p) => (await rpc<Record<string, number>>('fac_problem_counts', { p_token: p })) ?? {},
     exportData: (p, f = {}) =>
       rpc<ExportData>('export_data', { p_token: p, p_session_id: f.session_id ?? null, p_chapter: f.chapter ?? null, p_from: f.from ?? null, p_to: f.to ?? null }),
     recode: async (p, answerId, codes, tag) => {

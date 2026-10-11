@@ -166,3 +166,19 @@ describe('session auto-close and closed-session joins (mirrors migration 0007)',
     expect(await code(api.joinSession('AUTO14'))).toBe('ok');
   });
 });
+
+describe('per-problem counts (feeds the Quick check rotation)', () => {
+  it('counts students, not rows, and needs a token', async () => {
+    const api = make();
+    const T = await signIn(api);
+    expect(await code(api.problemCounts('nope'))).toBe('bad_passcode');
+    const before = await api.problemCounts(T);
+    const s = await api.createSession(T, 'CNT01', ['skill'], null);
+    const a = student(s.id, 'ABC234', 5);
+    const b = student(s.id, 'DEF234', 5);
+    await api.sync('dev', [a, b], [answer(a, 'S9', 's1', 1), answer(a, 'S9', 's2', 1), answer(b, 'S9', 's1', 1), answer(b, 'F3', 'gut', 4)]);
+    const after = await api.problemCounts(T);
+    expect((after.S9 ?? 0) - (before.S9 ?? 0)).toBe(2);
+    expect((after.F3 ?? 0) - (before.F3 ?? 0)).toBe(1);
+  });
+});

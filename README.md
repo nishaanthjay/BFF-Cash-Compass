@@ -20,7 +20,7 @@ npm run dev                    # http://localhost:5173
 |---|---|
 | `/` | Home page: Join a workshop, or Facilitator log in |
 | `/join` | Student join (chapter code, or `/join?c=CODE` from the QR; old `/?c=CODE` links redirect here) |
-| `/facilitator` | Your passcode → **Quick start** (random 5, automatic code) or set it up yourself → project code + QR. Copy link, full-screen code, reopen or duplicate recent sessions |
+| `/facilitator` | Your passcode → **Quick start** (the 3-problem Quick check, automatic code) or set it up yourself → project code + QR. Copy link, full-screen code, reopen or duplicate recent sessions |
 | `/analysis` | Same passcode → Problems, Teach first, Students, Quality tabs; CSV export |
 
 The facilitator passcode is **not in the code**. It lives (salted bcrypt hash) in your Supabase database; set it with `set_facilitator_passcode` as in step 3 below. See [SECURITY.md](SECURITY.md).
@@ -37,7 +37,7 @@ Share a link with `?data=sample` on the end to open straight into it. Switch bac
 
 ## How it works
 
-1. **Facilitator** starts a session for a chapter code and chooses the questions: **Random 5** (we draw 5 problems for the whole group, with a Shuffle button), **I'll pick 5**, or **Everything** (long). The same problems go to every student, so each chart has the full group's n. S11A/S11B always travel together as one pick. The screen shows the code,
+1. **Facilitator** starts a session for a chapter code and chooses the questions: **Quick check · about 8 minutes** (the default: one Skill, one Feasibility and one Hybrid problem, rotated so the problems with the fewest answers so far come up first), **I'll pick** (up to 10), or **Everything** (long; about 2.8 minutes per problem). The same problems go to every student, so each chart has the full group's n. S11A/S11B always travel together as one pick. The screen shows the code,
    a QR code and live counts. Closing the session stops new answers.
 2. **Student** joins with the chapter code and gets a random **anonymous student code** to write down (it lets them resume
    on another device). Then one question per screen. **Lock answer** is final: no back button, **no feedback of any kind**,
@@ -91,7 +91,7 @@ The Interaction and Admin Visual Spec replaced these earlier rules, so the app n
 - F3 step 6 (the rate that reaches $1,000,000) is a pick-one, not a typed answer.
 - Some tolerance bands are tighter than ±1% (S5 step 3, S6 step 3a, S10 steps 3a/4) because the simple and compound answers are less than 1% apart.
 - S2 and S10 axes were widened from the spec so the answer isn't at the centre of the line.
-- With every module selected, a session is well over 12 minutes. Pick modules per workshop.
+- Every time estimate is 2.8 minutes per problem (`MINUTES_PER_PROBLEM`), so the Quick check is about 8 minutes and Everything is over an hour. Quick check never draws S11A/S11B (they must sit five problems apart, which three problems cannot do); use *I'll pick* or *Everything* to include them.
 - The Supabase client has been tested only against local SQL and the mock, not a live Supabase project.
 
 ## Offline tolerance
@@ -104,7 +104,7 @@ answers only for an **open** session, so leave sessions open a few minutes after
 
 ### 1. Supabase
 1. Create a free project.
-2. Run the migrations in `supabase/migrations/` in order (`0001` … `0007`), in the SQL editor or with `supabase db push`. Deploy the matching app build at the same time: `0007` changes the facilitator functions, so an older build can no longer sign in.
+2. Run the migrations in `supabase/migrations/` in order (`0001` … `0008`), in the SQL editor or with `supabase db push`. Deploy the matching app build at the same time: `0007` changes the facilitator functions, so an older build can no longer sign in.
 3. **Set the facilitator passcode** (migration `0007` replaces the placeholder with an unknown random one, so the facilitator pages stay locked until you do this):
    ```sql
    select public.set_facilitator_passcode('your long passcode, at least 12 characters');
@@ -200,7 +200,7 @@ supabase/                migrations + SQL smoke test
 ## Decisions and assumptions
 
 - **Single-phase.** Taken once; no PRE/POST/DELAYED.
-- **Migrations.** `0007` hardens the facilitator login (throttled `fac_login`, tokens), auto-closes sessions after 6 hours, throttles wrong join codes and trims function grants. `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions), `0006` adds recent/reopen sessions and a clear "session ended" error for students.
+- **Migrations.** `0007` hardens the facilitator login (throttled `fac_login`, tokens), auto-closes sessions after 6 hours, throttles wrong join codes and trims function grants. `0001` base, `0002` single phase, `0003` questionnaire (step responses, student codes, recodes), `0004` relaxes problem ids to allow S11A/S11B, `0005` lets a session fix its exact problems (short sessions), `0006` adds recent/reopen sessions and a clear "session ended" error for students, `0008` adds per-problem student counts for the Quick check rotation.
 - **Join model.** Chapter code alone; one open session per chapter.
 - **Truth snapshot.** Each answer stores its correct value at answer time, so later item edits don't rewrite past results.
 - **Chart colours.** Correct = Ledger Blue, named wrong pattern = pink `#DB2777`, unclassified = gray, validated with a colour-vision check; shapes and labels carry meaning too. Gold marks the headline finding.
