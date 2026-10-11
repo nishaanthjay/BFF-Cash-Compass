@@ -4,7 +4,7 @@ import { color } from '../styles/tokens';
 import type { OnValue, StepValue } from './types';
 import s from './Dial.module.css';
 
-const LABELS = ['Almost certainly false', 'Probably false', 'Not sure', 'Probably true', 'Almost certainly true'];
+const LABELS = ['Not believable at all', 'Not very believable', 'Not sure', 'Pretty believable', 'Totally believable'];
 const INK = color.foreground;
 
 function arc(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number) {

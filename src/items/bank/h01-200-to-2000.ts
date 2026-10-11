@@ -5,7 +5,7 @@ export default defineProblem({
   id: 'H1',
   slug: '200-to-2000',
   title: '“$200 Becomes $2,000”',
-  version: 1,
+  version: 2,
   active: true,
   draft: true,
   module: 'hybrid',
@@ -29,9 +29,10 @@ export default defineProblem({
       id: 's1',
       kind: 'cold',
       label: 'Step 1 · balance guess',
-      prompt: 'About how much would $200 at 8% a year be worth after 10 years? Tap the line.',
+      prompt: 'You put $200 in an account that pays 8% a year. About how much is in it after 10 years? Tap the line.',
       input: { type: 'numberLine', min: 0, max: 3000, scale: 'linear', unit: 'usd' },
       correct: 431.78,
+      correctTolPct: 5, // a tap on a line is an estimate
       codes: [
         { code: 'LIN', value: 360 },
         { code: 'CLAIM', value: 2000 },
@@ -66,23 +67,24 @@ export default defineProblem({
       id: 's4',
       kind: 'guided',
       label: 'Step 4 · rate the claim would need',
-      prompt: 'About what yearly interest rate would it take to turn $200 into $2,000 in 10 years? Tap the line.',
+      prompt: 'What yearly interest rate would turn $200 into $2,000 in 10 years? Tap the line.',
       input: { type: 'numberLine', min: 0, max: 100, scale: 'linear', unit: 'percent' },
       correct: 25.89,
-      codes: [{ code: 'LIN', value: 80 }],
+      correctTolPct: 5, // a tap on a line is an estimate
+      codes: [{ code: 'LIN', value: 90 }], // 900% growth ÷ 10 years
     },
     {
       id: 'post',
       kind: 'rating_post',
       label: 'Rating after the math',
-      prompt: 'Now that you have worked through it, how believable is the claim?',
+      prompt: 'Now that you’ve done the math, how believable is the claim?',
       input: { type: 'dial' },
     },
     {
       id: 's5',
       kind: 'choice',
       label: 'What I’d ask',
-      prompt: 'What would you ask the person who said this?',
+      prompt: 'What is the FIRST thing you would ask this person?',
       input: {
         type: 'choice',
         options: [

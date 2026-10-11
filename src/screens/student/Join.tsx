@@ -208,6 +208,10 @@ export function Join() {
                 <IconBadge icon={KeyRound} tone="pink" size="sm" />
                 <span>Answers lock when you tap “Lock answer.” You can’t go back.</span>
               </li>
+              <li>
+                <IconBadge icon={Target} tone="soft" size="sm" />
+                <span>You will not see right answers during this activity. Do your best.</span>
+              </li>
             </ul>
           </Card>
 

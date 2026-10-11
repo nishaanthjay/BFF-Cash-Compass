@@ -16,17 +16,17 @@ const D = stu('DDD555');
 describe('sankey (S3)', () => {
   const d = dataset(
     [
-      resp(answer(A, 'S3', 's1', 40, ['ADD'])), resp(answer(A, 'S3', 's3a', null, [], { value: { choice: ['base80'] } })), resp(answer(A, 'S3', 's4', 40, ['ADD'])),
+      resp(answer(A, 'S3', 's1', 40, ['ADDPCT'])), resp(answer(A, 'S3', 's3a', null, [], { value: { choice: ['base80'] } })), resp(answer(A, 'S3', 's4', 40, ['ADDPCT'])),
       resp(answer(B, 'S3', 's1', 44.8, ['CORR'])), resp(answer(B, 'S3', 's3a', null, [], { value: { choice: ['base56'] } })), resp(answer(B, 'S3', 's4', 44.8, ['CORR'])),
-      resp(answer(C, 'S3', 's1', 30, ['UNK'])), resp(answer(C, 'S3', 's3a', null, [], { value: { choice: ['base80'] } })), resp(answer(C, 'S3', 's4', 40, ['ADD'])),
-      resp(answer(D, 'S3', 's1', 40, ['ADD'])),
+      resp(answer(C, 'S3', 's1', 30, ['UNK'])), resp(answer(C, 'S3', 's3a', null, [], { value: { choice: ['base80'] } })), resp(answer(C, 'S3', 's4', 40, ['ADDPCT'])),
+      resp(answer(D, 'S3', 's1', 40, ['ADDPCT'])),
     ],
     [A, B, C, D],
   );
   const cols = [
-    { step: 's1', label: 'g1', groups: [{ label: 'right', codes: ['CORR' as const] }, { label: 'add', codes: ['ADD' as const] }] },
+    { step: 's1', label: 'g1', groups: [{ label: 'right', codes: ['CORR' as const] }, { label: 'add', codes: ['ADDPCT' as const] }] },
     { step: 's3a', label: 'base', groups: [{ label: '80', choice: 'base80' }, { label: '56', choice: 'base56' }] },
-    { step: 's4', label: 'g3', groups: [{ label: 'right', codes: ['CORR' as const] }, { label: 'add', codes: ['ADD' as const] }] },
+    { step: 's4', label: 'g3', groups: [{ label: 'right', codes: ['CORR' as const] }, { label: 'add', codes: ['ADDPCT' as const] }] },
   ];
   it('counts only students with every step, and sends unmatched answers to Other', () => {
     const s = sankey(d, 'S3', cols, rc);

@@ -5,7 +5,7 @@ export default defineProblem({
   id: 'S1',
   slug: 'hoodie-sale',
   title: 'The Hoodie Sale',
-  version: 1,
+  version: 2,
   active: true,
   draft: true,
   module: 'skill',
@@ -17,9 +17,10 @@ export default defineProblem({
       id: 's1',
       kind: 'cold',
       label: 'Step 1 · cold estimate',
-      prompt: 'The hoodie is $48 and 25% off. About how much do you pay? Tap the line.',
+      prompt: 'A hoodie costs $48. It’s 25% off. About how much will you pay? Tap the line.',
       input: { type: 'numberLine', min: 0, max: 60, scale: 'linear', unit: 'usd' },
       correct: 36,
+      correctTolPct: 5, // a tap on a line is an estimate
       codes: [
         { code: 'PAD', value: 23 },
         { code: 'HALF', value: 24 },
@@ -30,8 +31,8 @@ export default defineProblem({
     {
       id: 's2',
       kind: 'control',
-      label: 'Step 2 · 10% of $48',
-      prompt: 'What is 10% of $48? Type your answer. You can shade the bar too if it helps.',
+      label: 'Step 2 · benchmark arithmetic (10% of $48)',
+      prompt: 'What is 10% of $48? Type your answer. You can shade the bar if it helps.',
       input: { type: 'shade', whole: 48, unit: 'usd', readout: 'pct', typed: 'separate' },
       correct: 4.8,
       codes: [
@@ -43,7 +44,7 @@ export default defineProblem({
       id: 's3',
       kind: 'guided',
       label: 'Step 3 · dollars off',
-      prompt: 'Shade the bar to show 25% of $48. How many dollars come off?',
+      prompt: 'Shade the bar to show 25% of $48. How many dollars is that?',
       input: { type: 'shade', whole: 48, unit: 'usd', readout: 'usd', typed: 'linked' },
       correct: 12,
       codes: [
@@ -56,7 +57,7 @@ export default defineProblem({
       id: 's4',
       kind: 'guided',
       label: 'Step 4 · final price',
-      prompt: 'So what is the final price of the hoodie?',
+      prompt: 'What is the final price of the hoodie?',
       input: { type: 'numberLine', min: 0, max: 60, scale: 'linear', unit: 'usd' },
       correct: 36,
       codes: [

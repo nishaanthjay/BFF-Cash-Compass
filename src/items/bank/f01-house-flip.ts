@@ -5,7 +5,7 @@ export default defineProblem({
   id: 'F1',
   slug: 'house-flip',
   title: 'The $10K House Flip',
-  version: 1,
+  version: 2,
   active: true,
   draft: true,
   module: 'feasibility',
@@ -111,7 +111,7 @@ export default defineProblem({
       id: 's4b',
       kind: 'guided',
       label: 'Step 4b · net profit',
-      prompt: 'After everything you counted, how much money do you actually make? (The sale price is $20,000.)',
+      prompt: 'Using all the costs, how much profit do you actually make? The house sells for $20,000.',
       input: { type: 'number', unit: 'usd' },
       correct: 900,
       codes: [
@@ -126,7 +126,7 @@ export default defineProblem({
       id: 's5a',
       kind: 'guided',
       label: 'Step 5a · total cash in',
-      prompt: 'In total, how much money do you put into the deal? Count everything you pay, including the selling costs.',
+      prompt: 'How much money do you pay in total for this deal? Include the selling costs.',
       input: { type: 'number', unit: 'usd' },
       correct: 19100,
       codes: [
@@ -138,8 +138,8 @@ export default defineProblem({
     {
       id: 's5b',
       kind: 'guided',
-      label: 'Step 5b · return on that money',
-      prompt: 'What percent do you earn on the money you put in? (Profit ÷ total cash in.)',
+      label: 'Step 5b · percent earned on that money',
+      prompt: 'Profit is what percent of the money you put in? (Profit ÷ money you put in.)',
       input: { type: 'number', unit: 'percent' },
       calculator: true,
       correct: 4.71,
@@ -152,18 +152,18 @@ export default defineProblem({
       id: 's6',
       kind: 'guided',
       label: 'Step 6 · yearly rate',
-      prompt: 'The whole deal takes 165 days. If you earned that same percent again and again, about what would it be in a full year (365 days)?',
+      prompt: 'This deal took 165 days. Say you made the same percent every 165 days. About what percent would that be in a full year (365 days)? Just scale it up; do not compound.',
       input: { type: 'number', unit: 'percent' },
       calculator: true,
       correct: 10.42,
-      correctTolPct: 3.5,
+      correctTolPct: 3.5, // simple scaling gives 10.42; compounding gives about 10.7, which still counts
       codes: [{ code: 'GROSS', value: 221.2 }],
     },
     {
       id: 's7',
       kind: 'guided',
       label: 'Step 7 · break-even sale price',
-      prompt: 'Selling costs are 8% of whatever the sale price is. What is the lowest sale price where you still make $0 profit?',
+      prompt: 'Selling costs are 8% of the sale price. What is the lowest sale price where you make exactly $0 profit?',
       input: { type: 'number', unit: 'usd' },
       calculator: true,
       correct: 19021.74,
@@ -187,7 +187,7 @@ export default defineProblem({
       id: 's8b',
       kind: 'guided',
       label: 'Step 8b · how much',
-      prompt: 'How many dollars does it make or lose? Type the number without a minus sign.',
+      prompt: 'How many dollars do you make or lose? Type the number only, with no minus sign.',
       input: { type: 'number', unit: 'usd' },
       correct: 2100,
       codes: [{ code: 'GROSS', value: 7000 }],
@@ -197,7 +197,7 @@ export default defineProblem({
       kind: 'choice',
       label: 'Step 9 · the 70% rule',
       prompt:
-        'Some investors use a “70% rule”: pay at most 70% of what the finished house will sell for, minus the repairs. Does a $10,000 buy price pass this rule?',
+        'Some investors follow a “70% rule”: pay no more than 70% of the finished sale price, then subtract the repair costs. Does a $10,000 buy price pass?',
       input: {
         type: 'choice',
         options: [
@@ -211,7 +211,7 @@ export default defineProblem({
       id: 'post',
       kind: 'rating_post',
       label: 'Rating after the math',
-      prompt: 'Now that you have worked through it, how believable is the claim?',
+      prompt: 'Now that you’ve done the math, how believable is the claim?',
       input: { type: 'dial' },
     },
     {
@@ -244,6 +244,7 @@ export default defineProblem({
   notes: [
     'Scenario numbers (repairs, buying, holding, 8% selling costs, 165 days) are inputs from the spec, not market facts.',
     'Order: this problem’s gut rating comes before S4 and F5 (my reading of “before any other cost-related item”).',
+    'Step 6 asks students to scale the percent up without compounding (4.71% × 365/165 = 10.42). Compounding gives about 10.7%, which is still accepted.',
     'Step 8 is split into a yes/no and an amount because the keypad has no minus sign.',
   ],
 });

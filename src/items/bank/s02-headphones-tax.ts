@@ -5,7 +5,7 @@ export default defineProblem({
   id: 'S2',
   slug: 'headphones-tax',
   title: 'Headphones in Wake County',
-  version: 1,
+  version: 2,
   active: true,
   draft: true,
   module: 'skill',
@@ -25,7 +25,7 @@ export default defineProblem({
       id: 's1',
       kind: 'cold',
       label: 'Step 1 · cold estimate',
-      prompt: 'Headphones cost $80 and sales tax is 7.25%. About how much do you pay at the register?',
+      prompt: 'Headphones cost $80. Sales tax is 7.25%. About how much do you pay at the register? Tap the line.',
       input: { type: 'numberLine', min: 70, max: 110, scale: 'linear', unit: 'usd' },
       correct: 85.8,
       codes: [
@@ -37,7 +37,7 @@ export default defineProblem({
       id: 's2',
       kind: 'control',
       label: 'Step 2 · 1% of $80',
-      prompt: 'What is 1% of $80?',
+      prompt: 'What is 1% of $80? Type your answer in dollars.',
       input: { type: 'number', unit: 'usd' },
       correct: 0.8,
       codes: [
@@ -49,7 +49,7 @@ export default defineProblem({
       id: 's3',
       kind: 'guided',
       label: 'Step 3 · tax in dollars',
-      prompt: 'How much is the tax in dollars? Type it on the tax line.',
+      prompt: 'How many dollars is the tax? Type it on the tax line.',
       input: { type: 'number', unit: 'usd' },
       correct: 5.8,
       codes: [
@@ -86,5 +86,7 @@ export default defineProblem({
     { type: 'consistency', check: 'receiptTotal', steps: ['s3', 's4'], title: 'Does their total equal $80 + their tax?', note: 'Internal consistency: total ≠ 80 + the tax they typed.' },
   ],
   decision: 'If Step 3 is right but Step 4 is wrong, the gap is adding. If Step 3 is wrong, it is the percent.',
-  notes: ['Axis is $70–$110, not the spec’s $70–$100: on $70–$100 the correct $85.80 sits at the centre of the line, which the spec’s own range rule forbids.'],
+  notes: [
+    'Step 1 is graded within ±1%, not ±5% like the other estimate steps: the percent-as-dollars answer ($87.25) is only 1.7% above the right one ($85.80), so a wider band would hide the exact mistake this step tests.',
+    'Axis is $70–$110, not the spec’s $70–$100: on $70–$100 the correct $85.80 sits at the centre of the line, which the spec’s own range rule forbids.'],
 });

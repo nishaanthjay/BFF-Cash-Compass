@@ -86,6 +86,9 @@ The Interaction and Admin Visual Spec replaced these earlier rules, so the app n
   anchoring index, a bootstrap interval and the minimum detectable effect.
 - **F6/F7** depend on the scenario assumptions shown on the page.
 - **Timing and input-method comparisons are exploratory.** Students are not randomly assigned to typed vs dragged.
+- Cold-estimate steps (a tap on a line or meter) are graded within ±5% of the answer, not ±1%, because a tap is imprecise. Typed exact-answer steps stay at ±1%. S2 step 1 is the exception: the percent-as-dollars mistake ($87.25) is only 1.7% above the right answer ($85.80), so it keeps ±1%.
+- Error code `ADD` was renamed `ADDPCT` (and moved to the percent family); `WRONGBASE`, `FORGOTBASE` and `UNIT` are new. Answers already stored with the old `ADD` code are not migrated.
+- F3 step 6 (the rate that reaches $1,000,000) is a pick-one, not a typed answer.
 - Some tolerance bands are tighter than ±1% (S5 step 3, S6 step 3a, S10 steps 3a/4) because the simple and compound answers are less than 1% apart.
 - S2 and S10 axes were widened from the spec so the answer isn't at the centre of the line.
 - With every module selected, a session is well over 12 minutes. Pick modules per workshop.
