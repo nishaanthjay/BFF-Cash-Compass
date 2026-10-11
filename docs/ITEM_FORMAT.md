@@ -9,7 +9,7 @@ pages are both generated from the same file: input components come from each ste
 2. Run `npm test`. The validator (`src/items/validate.ts`) checks the whole bank and names any problem.
 3. Commit and push; Vercel redeploys.
 
-Wording in the current bank is **DRAFT** (`draft: true` shows a "Draft wording" tag in the admin pages). Replace it, then remove the flag.
+`draft: true` is an internal flag for wording that has not been signed off. It is kept in the data but never shown to students or facilitators. Set it to `false` once the wording is approved.
 
 ## Shape of a problem
 

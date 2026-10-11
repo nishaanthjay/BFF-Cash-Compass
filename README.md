@@ -4,9 +4,9 @@ A financial-literacy diagnostic for grades 6–8, run once at the start of a BFF
 25 multi-step money problems (S11 is delivered as two items, S11A and S11B, so the bank has 26 files). The facilitator gets a live
 "where is the gap?" dashboard to decide what to teach first.
 
-> **Status: all four build stages are done.** Item wording is **DRAFT**, written from the *Interaction and Admin Visual
-> Spec*. It is marked "Draft wording" in the admin pages. Replace it with approved wording before using results for
-> anything beyond workshop teaching (see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md)).
+> **Status: all four build stages are done.** Item wording was written from the *Interaction and Admin Visual Spec* and is
+> flagged `draft: true` in the item files (an internal flag; nothing in the app shows it). Get the wording approved before using
+> results for anything beyond workshop teaching (see [docs/ITEM_FORMAT.md](docs/ITEM_FORMAT.md)).
 
 ## Quick start
 

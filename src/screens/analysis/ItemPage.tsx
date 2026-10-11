@@ -48,7 +48,6 @@ function ItemView({ pass, lock }: { pass: string; lock: () => void }) {
       title={
         <>
           {p.id} · {p.title}
-          {p.draft && <span className={`${s.tag} ${s.draft}`}>Draft wording</span>}
         </>
       }
       sub={

@@ -60,7 +60,6 @@ function Overview({ pass, lock }: { pass: string; lock: () => void }) {
                     <Card tight className={s.itemCard}>
                       <span className={s.itemId}>
                         {p.id}
-                        {p.draft && <span className={`${s.tag} ${s.draft}`}>Draft</span>}
                       </span>
                       <strong>{p.title}</strong>
                       <span className={s.muted}>{MODULE_LABELS[p.module]}</span>
