@@ -138,11 +138,16 @@ One row per locked step. Columns include `student_code`, `workshop_id`, `chapter
 computed `signed_error`, `ape` and `log_ratio`, ratings, free text, `time_to_first_touch_ms`, `time_to_lock_ms`, `n_revisions`,
 `device_type`, `item_position`, `value_json` and `answered_at`. Text starting with `=`, `+`, `-` or `@` is escaped against spreadsheet formulas.
 
+## Before a rollout
+
+Work through [docs/QA.md](docs/QA.md). Security notes and passcode rotation are in [SECURITY.md](SECURITY.md).
+
 ## Development
 
 ```bash
 npm test            # vitest (items, classifier, order engine, inputs, charts, analysis, CSV, mock API, token scan, contrast)
 npm run contrast    # WCAG table (fails below AA)
+npm run netcheck -- http://localhost:5173   # fails on any 4xx/5xx or console error (demo server running)
 npm run build       # typecheck + production build
 node scripts/e2e.mjs http://localhost:5173 screenshots   # Playwright walk-through (375 px, offline, reduced motion)
 ```

@@ -80,7 +80,7 @@ unknown one, so the facilitator pages stay locked until you rotate it. Nothing p
 
 ## Known limits (accepted)
 
-- The Supabase security advisor will keep flagging the 13 anon-executable `SECURITY DEFINER` functions. That is the design:
+- The Supabase security advisor will keep flagging the 14 anon-executable `SECURITY DEFINER` functions. That is the design:
   an RPC-only API with no accounts. Removing the warning would mean moving these calls behind an Edge Function that uses
   the service-role key.
 - Six (nine after `0007`) tables show "RLS enabled, no policy". That is intentional: no policy means no direct access.
