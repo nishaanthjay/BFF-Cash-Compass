@@ -1,0 +1,1425 @@
+CASH COMPASS — QUESTION BANK (wording + context)
+Generated from src/items/bank/*.ts in nishaanthjay/BFF-Cash-Compass.
+
+WHAT THIS IS
+Cash Compass is a financial-literacy diagnostic for grades 6–8, run once at the start of a BFF of America chapter workshop.
+Students answer multi-step money problems, one screen per step. "Lock answer" is final: no back button, no feedback, no timers,
+no points. A typed number box is always available beside any slider/tap input, and there are no default values.
+The facilitator gets a live "where is the gap?" dashboard to decide what to teach first.
+There are 26 problem files (25 problems; S11 is split into S11A and S11B). A session draws 5 random problems, 5 chosen by the
+facilitator, or all of them.
+
+STATUS OF THE WORDING
+All wording below is DRAFT (every item has draft: true), written from the "Interaction and Admin Visual Spec". It is meant to be
+replaced with approved wording before results are used for anything beyond workshop teaching.
+
+HOW TO READ EACH ENTRY
+- Scenario: what the student sees before the steps.
+- Each STEP is one screen. The prompt is the exact student-facing wording. "Input" is how the student answers.
+- "Correct" is the value the answer is graded against (answers within ±1% count as correct unless noted).
+- "Predicted wrong answers" are common mistakes the app auto-codes (code name, value). Code meanings are listed at the end.
+- "Decision" is what the facilitator is told to take from the charts. "Notes" are honest-limit caveats.
+- Student sees no correct answers or explanations at any point; the Correct/Predicted/Decision lines are facilitator-side only.
+
+MODULES: Skill & bias (S1–S15), Feasibility (F1–F8), Hybrid (H1–H2)
+Item-order rules: random within modules (seeded by student code), with rules like S6 before H1, S11A/S11B at least 5 items apart,
+F1 away from S4/S5. S11 order and the S12 anchor (high/low/none) are balanced by a hash of the student code.
+
+==============================================================================
+
+S1 — The Hoodie Sale
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: percent, arithmetic | Version 1
+
+SCENARIO
+Price tag: Hoodie, $48. Badges: 25% OFF
+
+STEPS
+
+  1. [cold estimate] Step 1 · cold estimate
+     Prompt: "The hoodie is $48 and 25% off. About how much do you pay? Tap the line."
+     Input: Number line, linear, 0 to 60 usd; typed box alongside
+     Correct: 36
+     Predicted wrong answers: PAD=23; HALF=24; DEC=47.75; DAP=12
+
+  2. [control (arithmetic check)] Step 2 · 10% of $48
+     Prompt: "What is 10% of $48? Type your answer. You can shade the bar too if it helps."
+     Input: Shade bar over whole of 48 usd, readout pct
+     Correct: 4.8
+     Predicted wrong answers: PAD=10; DEC=0.48
+
+  3. [guided step] Step 3 · dollars off
+     Prompt: "Shade the bar to show 25% of $48. How many dollars come off?"
+     Input: Shade bar over whole of 48 usd, readout usd
+     Correct: 12
+     Predicted wrong answers: PAD=25; HALF=24; DEC=0.25
+
+  4. [guided step] Step 4 · final price
+     Prompt: "So what is the final price of the hoodie?"
+     Input: Number line, linear, 0 to 60 usd; typed box alongside
+     Correct: 36
+     Predicted wrong answers: PAD=23; HALF=24; DEC=47.75; DAP=12
+
+DECISION (facilitator): A big cluster at $23 means start with “percent is not dollars.” If Step 1 is fine but Step 2 errors are common, review percent arithmetic first.
+
+S2 — Headphones in Wake County
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: percent, arithmetic | Version 1
+
+SCENARIO
+Receipt: Wake County, NC · sales tax 7.25%
+  • Headphones: $80
+  • Tax (filled from student's answer at step s3)
+  • Total (filled from student's answer at step s4)
+
+STEPS
+
+  1. [cold estimate] Step 1 · cold estimate
+     Prompt: "Headphones cost $80 and sales tax is 7.25%. About how much do you pay at the register?"
+     Input: Number line, linear, 70 to 110 usd; typed box alongside
+     Correct: 85.8
+     Predicted wrong answers: NOTAX=80; PAD=87.25
+
+  2. [control (arithmetic check)] Step 2 · 1% of $80
+     Prompt: "What is 1% of $80?"
+     Input: Typed number (usd)
+     Correct: 0.8
+     Predicted wrong answers: PAD=1; DEC=8
+
+  3. [guided step] Step 3 · tax in dollars
+     Prompt: "How much is the tax in dollars? Type it on the tax line."
+     Input: Typed number (usd)
+     Correct: 5.8
+     Predicted wrong answers: PAD=7.25; DEC=58
+
+  4. [guided step] Step 4 · total
+     Prompt: "What is the total? Type it on the total line."
+     Input: Typed number (usd)
+     Correct: 85.8
+     Predicted wrong answers: NOTAX=80; PAD=87.25
+
+DECISION (facilitator): If Step 3 is right but Step 4 is wrong, the gap is adding. If Step 3 is wrong, it is the percent.
+NOTES:
+  - Axis is $70–$110, not the spec’s $70–$100: on $70–$100 the correct $85.80 sits at the centre of the line, which the spec’s own range rule forbids.
+
+S3 — The Double-Discount Jacket
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: percent | Version 1
+
+SCENARIO
+Price tag: Jacket, $80. Badges: 30% OFF, EXTRA 20% OFF AT THE REGISTER
+
+STEPS
+
+  1. [cold estimate] Step 1 · cold estimate
+     Prompt: "The jacket is $80 and 30% off. Then you get an extra 20% off at the register. About how much do you pay? Tap the line."
+     Input: Number line, linear, 20 to 80 usd; typed box alongside
+     Correct: 44.8
+     Predicted wrong answers: ADD=40
+
+  2. [control (arithmetic check)] Step 2 · price after 30% off
+     Prompt: "What is the price after just the 30% off?"
+     Input: Typed number (usd)
+     Correct: 56
+     Predicted wrong answers: DAP=24; PAD=50
+
+  3. [guided step] Step 3a · which price gets the extra 20%
+     Prompt: "The extra 20% comes off at the register. Which amount does the 20% come off of?"
+     Input: Pick one:
+        - $80, the original price
+        - $56, the price after 30% off
+     Correct option(s): base56
+
+  4. [guided step] Step 3b · the extra discount in dollars
+     Prompt: "How many dollars does the extra 20% take off?"
+     Input: Typed number (usd)
+     Correct: 11.2
+     Predicted wrong answers: ADD=16
+
+  5. [guided step] Step 4 · final price
+     Prompt: "So what is the final price of the jacket?"
+     Input: Typed number (usd)
+     Correct: 44.8
+     Predicted wrong answers: ADD=40
+
+  6. [guided step] Step 5 · total percent off
+     Prompt: "Compared with the $80 price tag, what percent off is that in total? Tap the line."
+     Input: Number line, linear, 0 to 100 percent; typed box alongside
+     Correct: 44
+     Predicted wrong answers: ADD=50
+
+DECISION (facilitator): A thick $80 → $40 flow means the group adds the percents (30% + 20% = 50%). That’s the gap to teach.
+
+S4 — Selling Sneakers Online
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: percent | Version 1
+
+SCENARIO
+You sell your sneakers on an app. The app takes a fee of 12% of the price they sell for.
+  • App fee: 12% of the sale price
+
+STEPS
+
+  1. [cold estimate] Step 1 · what you keep
+     Prompt: "You list the sneakers for $50 and they sell. About how much do you keep after the fee? Tap the line."
+     Input: Number line, linear, 30 to 65 usd; typed box alongside
+     Correct: 44
+     Predicted wrong answers: GROSS=50; PAD=38
+
+  2. [control (arithmetic check)] Step 2 · the fee in dollars
+     Prompt: "How many dollars is the fee on a $50 sale?"
+     Input: Typed number (usd)
+     Correct: 6
+     Predicted wrong answers: PAD=12
+
+  3. [guided step] Step 3 · list price to keep $50
+     Prompt: "You want to keep exactly $50 AFTER the fee. What price should you list the sneakers for? Tap the line."
+     Input: Number line, linear, 40 to 80 usd; typed box alongside
+     Correct: 56.82
+     Predicted wrong answers: REVPCT=56; PAD=62
+
+  4. [guided step] Step 4a · check: the fee
+     Prompt: "Check your answer. At the price you picked in Step 3, how many dollars is the fee? (12% of that price.)"
+     Input: Typed number (usd)
+     Correct: computed from the student's earlier locked answers
+
+  5. [guided step] Step 4b · check: what you keep
+     Prompt: "And how much do you keep at that price after the fee?"
+     Input: Typed number (usd)
+     Correct: computed from the student's earlier locked answers
+
+DECISION (facilitator): Students right on Step 2 but near $56 on Step 3 have a reverse-percent gap, which is the main target.
+
+S5 — The 2% Savings Control
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: arithmetic, compounding | Version 1
+
+SCENARIO
+You put $100 in a savings account. It pays 2% interest each year.
+  Jars: End of year 1 | End of year 2 | End of year 3
+
+STEPS
+
+  1. [control (arithmetic check)] Step 1 · balance after year 1
+     Prompt: "How much money is in the account at the end of year 1? Type it into jar 1."
+     Input: Typed number (usd)
+     Correct: 102
+     Predicted wrong answers: INTONLY=2; NOINT=100
+
+  2. [guided step] Step 2 · interest, paid out each year
+     Prompt: "Now say the bank pays you the interest each year, and you take it out. After 3 years, how much interest did you get in total?"
+     Input: Typed number (usd)
+     Correct: 6
+     Predicted wrong answers: COMP=6.12; NOINT=0
+
+  3. [guided step] Step 3 · balance if interest stays in
+     Prompt: "Now the interest stays in the account. How much is in the account after 3 years? Type it into jar 3."
+     Input: Typed number (usd)
+     Correct: 106.12
+     Predicted wrong answers: LIN=106; NOINT=100
+
+  4. ["why" explanation] Why is Step 3 bigger?
+     Prompt: "Why is the Step 3 answer a little bigger than $106? Write a short answer, or skip."
+     Input: Free text (placeholder: "Type a short answer. Please don’t type any names.")
+     (optional step)
+
+DECISION (facilitator): If more than a few tiles are unshaded, review percent arithmetic first and treat compounding answers in later problems with caution.
+NOTES:
+  - Step 3 bands are tight (±0.01%) so $106 (simple) and $106.12 (compound) are told apart. Answers like $106.1 will be coded UNK.
+
+S6 — The $200 Birthday Deposit
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Investing | Skill families: compounding | Version 1
+Ordering rules: {"before":["H1"],"notAdjacent":["S7","S8"]}
+
+SCENARIO
+You get $200 for your birthday and put it in an account that pays 8% interest a year. You never add or take out money.
+  • Start: $200
+  • Interest: 8% a year
+  • Time: 10 years
+
+STEPS
+
+  1. [cold estimate] Step 1 · draw the growth
+     Prompt: "Draw how your money grows. Place a point for year 10. You can also place a point for year 5."
+     Input: Draw a growth curve (start 200 usd, x-axis to 10, y-axis to 1000)
+     Correct: 431.78
+     Predicted wrong answers: LIN=360
+
+  2. [control (arithmetic check)] Step 2 · balance after 1 year
+     Prompt: "How much money is in the account after 1 year?"
+     Input: Typed number (usd)
+     Correct: 216
+     Predicted wrong answers: INTONLY=16; PAD=208
+
+  3. [guided step] Step 3a · balance after 2 years
+     Prompt: "How much is in the account after 2 years?"
+     Input: Typed number (usd)
+     Correct: 233.28
+     Predicted wrong answers: LIN=232
+
+  4. [guided step] Step 3b · interest earned in year 2
+     Prompt: "How much interest did the account earn during year 2?"
+     Input: Typed number (usd)
+     Correct: 17.28
+     Predicted wrong answers: LIN=16
+
+  5. [guided step] Step 4 · years to double
+     Prompt: "About how many years until the $200 becomes $400? Tap the line."
+     Input: Number line, linear, 0 to 40 years; typed box alongside
+     Correct: 9.01
+     Predicted wrong answers: LIN=12.5
+
+  6. [guided step] Step 5 · extra from compounding
+     Prompt: "If the account paid the same $16 every year (no interest on interest), it would have $360 after 10 years. How many MORE dollars does it really have?"
+     Input: Typed number (usd)
+     Correct: 71.78
+     Predicted wrong answers: SAMEASCOMP=0
+
+DECISION (facilitator): Lots of straight lines with a correct Step 2 means the gap is intuition about compounding, not arithmetic.
+NOTES:
+  - Step 3a uses ±0.2% bands so $232 (simple) and $233.28 (compound) are told apart.
+  - Y-axis is fixed at $0–$1,000 for every student and every workshop. Changing it shifts answers, so don’t pool across a change.
+
+S7 — Rule of 72 Race
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Investing | Skill families: compounding | Version 1
+Ordering rules: {"notAdjacent":["S8"]}
+
+SCENARIO
+You put $1,000 in an account that pays 6% interest a year. You never add or take out money.
+  • Start: $1,000
+  • Interest: 6% a year
+
+STEPS
+
+  1. [cold estimate] Step 1 · years to double
+     Prompt: "About how many years until the $1,000 becomes $2,000? Tap the timeline."
+     Input: Number line, linear, 0 to 50 years; typed box alongside
+     Correct: 11.9
+     Predicted wrong answers: LIN=16.7
+
+  2. [control (arithmetic check)] Step 2 · interest in year 1
+     Prompt: "How much interest does the account earn in the first year?"
+     Input: Typed number (usd)
+     Correct: 60
+     Predicted wrong answers: PAD=6; DEC=600
+
+  3. [guided step] Step 3 · doubling with simple interest
+     Prompt: "Now say the bank only ever pays interest on the first $1,000 (no interest on interest). About how many years until it becomes $2,000?"
+     Input: Number line, linear, 0 to 50 years; typed box alongside
+     Correct: 16.67
+     Predicted wrong answers: SAMEASCOMP=11.9
+
+  4. [guided step] Step 4a · balance after 24 years
+     Prompt: "With interest on interest (the real account), how much is in it after 24 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 4,048.93
+     Predicted wrong answers: LIN=2,440
+
+  5. [guided step] Step 4b · balance after 36 years
+     Prompt: "And after 36 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 8,147.25
+     Predicted wrong answers: LIN=3,160
+
+  6. [guided step] Step 5 · rate to double in 6 years
+     Prompt: "About what yearly interest rate would double money in 6 years?"
+     Input: Typed number (percent)
+     Correct: 12.25
+     Predicted wrong answers: LIN=16.67
+
+DECISION (facilitator): If Step 1 and Step 3 cluster together near 16–17, the group doesn’t separate simple from compound growth.
+
+S8 — $15 a Month
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: compounding, arithmetic | Version 1
+Ordering rules: {"notAdjacent":["S6","S7"]}
+
+SCENARIO
+You put $15 into a savings account at the end of every month for 5 years. The account pays 5% a year, added every month.
+  • Each month: $15
+  • Time: 5 years
+  • Interest: 5% a year, added monthly
+
+STEPS
+
+  1. [cold estimate] Step 1 · balance after 5 years
+     Prompt: "About how much is in the jar after 5 years? Tap the jar."
+     Input: Jar fill-line, log, 100 to 3,000 usd
+     Correct: 1,020.09
+     Predicted wrong answers: NOINT=900; LIN=945; LIN=1,125
+
+  2. [control (arithmetic check)] Step 2 · total you put in
+     Prompt: "How much money did YOU put in over the 5 years?"
+     Input: Typed number (usd)
+     Correct: 900
+     Predicted wrong answers: DEC=90
+
+  3. [guided step] Step 3 · interest earned
+     Prompt: "How much interest did the account earn in total?"
+     Input: Typed number (usd)
+     Correct: 120.09
+     Predicted wrong answers: NOINT=0
+
+  4. [guided step] Step 4 · $30 a month
+     Prompt: "Now you put in $30 a month instead. How much is in the account after 5 years?"
+     Input: Typed number (usd)
+     Correct: 2,040.18
+     Predicted wrong answers: NOINT=1,800
+
+DECISION (facilitator): A group clustering near $900 doesn’t expect interest on deposits.
+
+S9 — Start at 14 or 24?
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Investing | Skill families: compounding | Version 1
+
+SCENARIO
+Ben puts $2,000 in an account when he is 14. Aisha puts $2,000 in a different account when she is 24. Both accounts pay 7% a year. Neither adds more money. They both check their balances at age 64.
+  • Ben: $2,000 at age 14
+  • Aisha: $2,000 at age 24
+  • Interest: 7% a year
+
+STEPS
+
+  1. [cold estimate] Step 1 · how many times bigger
+     Prompt: "At age 64, about how many times bigger is Ben’s balance than Aisha’s? Tap the line."
+     Input: Number line, log, 0.5 to 5 times; typed box alongside
+     Correct: 1.97
+     Predicted wrong answers: NOTIME=1
+
+  2. [cold estimate] Step 1b · dollars bigger
+     Prompt: "About how many more dollars does Ben have than Aisha at age 64?"
+     Input: Typed number (usd)
+     Correct: 28,965
+     Predicted wrong answers: NOTIME=1,400
+
+  3. [control (arithmetic check)] Step 2 · balance after 1 year
+     Prompt: "How much does $2,000 become after 1 year at 7%?"
+     Input: Typed number (usd)
+     Correct: 2,140
+     Predicted wrong answers: INTONLY=140
+
+  4. [guided step] Step 3a · years to double
+     Prompt: "About how many years until money doubles at 7% a year?"
+     Input: Typed number (years)
+     Correct: 10.24
+     Predicted wrong answers: LIN=14.29
+
+  5. [choice] Step 3b · do 10 extra years matter?
+     Prompt: "Do 10 extra years make a big difference to the final balance?"
+     Input: Pick one:
+        - Yes, a big difference
+        - No, only a small difference
+     Correct option(s): yes
+
+  6. [guided step] Step 4 · what Ben needs to match
+     Prompt: "Ben starts at 14. How much would Ben need to put in at 14 to end up with the same as Aisha at 64?"
+     Input: Typed number (usd)
+     Correct: 1,016.7
+     Predicted wrong answers: NOTIME=2,000
+
+DECISION (facilitator): Many answers near 1× mean students underweight time horizon.
+
+S10 — Big Bank vs. High-Yield
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Investing | Skill families: percent, compounding | Version 1
+
+SCENARIO
+You put $500 in each of two accounts for 3 years. You never add or take out money.
+  • Account A: 4.00% a year (online high-yield)
+  • Account B: 0.37% a year (big bank)
+
+STEPS
+
+  1. [cold estimate] Step 1 · how much more A earns
+     Prompt: "After 3 years, about how many MORE dollars does Account A have than Account B? Tap the line."
+     Input: Number line, linear, 0 to 150 usd; typed box alongside
+     Correct: 56.86
+     Predicted wrong answers: LIN=54.45
+
+  2. [control (arithmetic check)] Step 2a · year-1 interest, A
+     Prompt: "How much interest does Account A earn in the first year?"
+     Input: Typed number (usd)
+     Correct: 20
+     Predicted wrong answers: PAD=4
+
+  3. [control (arithmetic check)] Step 2b · year-1 interest, B
+     Prompt: "How much interest does Account B earn in the first year?"
+     Input: Typed number (usd)
+     Correct: 1.85
+     Predicted wrong answers: DEC=185; PAD=0.37
+
+  4. [guided step] Step 3a · balance after 3 years, A
+     Prompt: "How much is in Account A after 3 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 562.43
+     Predicted wrong answers: LIN=560
+
+  5. [guided step] Step 3b · balance after 3 years, B
+     Prompt: "How much is in Account B after 3 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 505.57
+     Predicted wrong answers: DEC=685
+
+  6. [guided step] Step 4 · keeping up with prices
+     Prompt: "Prices go up 3.4% a year. After 3 years, how much money would you need to buy the same things that $500 buys today? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 552.75
+     Predicted wrong answers: LIN=551; NOINT=500
+
+  7. [choice] Step 5 · which gains buying power
+     Prompt: "Which account ends with MORE buying power than the $500 you started with?"
+     Input: Pick one:
+        - Only Account A
+        - Only Account B
+        - Both accounts
+        - Neither account
+     Correct option(s): a
+
+DECISION (facilitator): Any students who read 0.37% as 37% need a quick percent-notation refresh before interest topics.
+NOTES:
+  - Step 1 axis is $0–$150, not the spec’s $0–$120: the correct $56.86 would sit on the centre of $0–$120, which the spec’s own range rule forbids.
+  - Steps 3a and 4 use ±0.1% bands so simple and compound answers are told apart.
+
+S11A — Pretend Prize · Now or Later
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Decision Making | Skill families: time_preference | Version 1
+Form variants (assigned per student by hash of student code): key "S11": AB, BA
+Ordering rules: {"minGap":{"with":"S11B","gap":5}}
+
+SCENARIO
+Pretend you won a prize. This is only pretend: no real money. Choose the one you would really pick.
+
+STEPS
+
+  1. [choice] Choice
+     Prompt: "Which would you pick?"
+     Input: Timeline pick: Today ($25, 0 wk) | In 4 weeks ($30, 4 wk)
+
+  2. [guided step] Step C · switch point
+     Prompt: "What is the smallest amount, paid in 4 weeks, that would make you wait instead of taking $25 today? Tap the line."
+     Input: Number line, linear, 25 to 60 usd; typed box alongside
+
+  3. [guided step] Step D · percent gained by waiting
+     Prompt: "By waiting 4 weeks you get $30 instead of $25. What percent MORE is $30 than $25?"
+     Input: Typed number (percent)
+     Correct: 20
+     Predicted wrong answers: PAD=5
+
+  4. [choice] Step E · vs a savings account
+     Prompt: "A savings account pays 4% in a whole year. Is waiting 4 weeks for that extra money better or worse than the savings account?"
+     Input: Pick one:
+        - Better than the savings account
+        - Worse than the savings account
+        - About the same
+     Correct option(s): better
+
+DECISION (facilitator): More SL than LS suggests present bias. Use it as a discussion hook about waiting, not as a label for any student.
+NOTES:
+  - Hypothetical choices. Amounts and delays are fixed for every student; only the order of the two parts is counterbalanced.
+
+S11B — Pretend Prize · Both Later
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Decision Making | Skill families: time_preference | Version 1
+Form variants (assigned per student by hash of student code): key "S11": AB, BA
+
+SCENARIO
+Pretend you won a different prize. This is only pretend: no real money. Choose the one you would really pick.
+
+STEPS
+
+  1. [choice] Choice
+     Prompt: "Which would you pick?"
+     Input: Timeline pick: In 26 weeks ($25, 26 wk) | In 30 weeks ($30, 30 wk)
+
+DECISION (facilitator): Read this together with S11A: choosing $25 today but waiting for $30 here is the present-bias pattern.
+
+S12 — The Backpack Price
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Decision Making | Skill families: feasibility | Version 1
+Form variants (assigned per student by hash of student code): key "S12": H, L, N
+
+SCENARIO
+Look at this school backpack. It is black, has three pockets, and has a laptop sleeve.
+
+STEPS
+
+  1. [choice] Anchor question (not scored)
+     Prompt: "Is the price of this backpack more or less than the number shown?"
+     Prompt (form "H"): "Is the price of this backpack more or less than $80?"
+     Prompt (form "L"): "Is the price of this backpack more or less than $25?"
+     Shown only to forms: H, L
+     Input: Pick one:
+        - More
+        - Less
+
+  2. [cold estimate] Price estimate
+     Prompt: "What do you think this backpack costs in a store?"
+     Input: Typed number (usd)
+
+  3. [guided step] Most you would pay
+     Prompt: "What is the most you would pay for it?"
+     Input: Typed number (usd)
+
+  4. [gut rating] Confidence
+     Prompt: "How sure are you about your price guess?"
+     Input: Believability dial 1–5 ("Not sure at all" to "Very sure")
+
+DECISION (facilitator): None at the individual-workshop level. This is a pooled-analysis chart. Never label individual students.
+NOTES:
+  - Typed input only on this problem: a slider’s range and start position would act as an anchor and contaminate the one item built to measure anchoring.
+
+S13 — Will $100 Still Buy $100?
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Spending & Saving | Skill families: percent, compounding | Version 1
+
+SCENARIO
+A shelf has 10 identical items. Each costs $10 today, so $100 buys all 10. Prices go up 3.4% a year.
+  • Each item today: $10
+  • Prices go up: 3.4% a year
+  • Your money: $100
+
+STEPS
+
+  1. [cold estimate] Step 1a · items $100 buys next year
+     Prompt: "Next year, how many of the 10 items will your $100 still buy? Tap the shelf."
+     Input: Dot grid: tap to fill, 10 items
+     Correct: 9.67
+     Predicted wrong answers: ILLUSION=10
+
+  2. [cold estimate] Step 1b · cost of the basket next year
+     Prompt: "Next year, what will the same 10 items cost in total?"
+     Input: Typed number (usd)
+     Correct: 103.4
+     Predicted wrong answers: ILLUSION=100; DEC=134
+
+  3. [control (arithmetic check)] Step 2 · next year’s $100 in today’s dollars
+     Prompt: "Next year, $100 will buy only as much as how many of TODAY’S dollars buy? (Prices are 3.4% higher.)"
+     Input: Typed number (usd)
+     Correct: 96.71
+     Predicted wrong answers: ILLUSION=100; DEC=74.63
+
+  4. [guided step] Step 3a · piggy bank (0%)
+     Prompt: "You keep $100 in a piggy bank for a year. It earns nothing. In today’s dollars, what is it worth next year?"
+     Input: Typed number (usd)
+     Correct: 96.71
+     Predicted wrong answers: ILLUSION=100
+
+  5. [guided step] Step 3b · savings account (0.37%)
+     Prompt: "You put $100 in a savings account that pays 0.37% for a year. In today’s dollars, what is it worth next year?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 97.07
+     Predicted wrong answers: ILLUSION=100.37
+
+  6. [guided step] Step 3c · high-yield account (4%)
+     Prompt: "You put $100 in a high-yield account that pays 4% for a year. In today’s dollars, what is it worth next year?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 100.58
+     Predicted wrong answers: ILLUSION=104
+
+  7. [guided step] Step 4 · cost in 10 years
+     Prompt: "If prices keep going up 3.4% a year, what will the $100 basket cost in 10 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 139.7
+     Predicted wrong answers: LIN=134; ILLUSION=100
+
+DECISION (facilitator): Many $100 answers mean students treat nominal and real value as the same thing.
+
+S14 — The Credit Card Minimum Trap
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Credit & Debt | Skill families: credit_risk, compounding | Version 1
+
+SCENARIO
+You owe $1,000 on a credit card. Interest is added every month on what you still owe. You pay the same amount each month and buy nothing else with the card.
+  • You owe: $1,000
+  • Interest: 22.15% a year
+  • You pay: $25 every month
+
+STEPS
+
+  1. [cold estimate] Step 1 · month it’s paid off
+     Prompt: "In which month will the card be paid off? Pick a year, then tap the month."
+     Input: Calendar (single), 120 Months
+     Correct: 74
+     Predicted wrong answers: NOINTDEBT=40
+
+  2. [control (arithmetic check)] Step 2a · monthly rate
+     Prompt: "The card charges 22.15% a year. About what percent is that each month?"
+     Input: Typed number (percent)
+     Correct: 1.85
+     Predicted wrong answers: PAD=22.15
+
+  3. [control (arithmetic check)] Step 2b · interest in month 1
+     Prompt: "How many dollars of interest are added in the first month on $1,000?"
+     Input: Typed number (usd)
+     Correct: 18.46
+     Predicted wrong answers: DEC=1.85
+
+  4. [guided step] Step 3 · split your first $25
+     Prompt: "Shade the part of your first $25 payment that pays down what you owe. The rest of the $25 is just interest."
+     Input: Shade bar over whole of 25 usd, readout usd
+     Correct: 6.54
+     Predicted wrong answers: NOINTDEBT=25
+
+  5. [guided step] Step 4a · total you pay
+     Prompt: "Add up everything you pay until the card is paid off. About how many dollars is that in total? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 1,832.58
+     Predicted wrong answers: NOINTDEBT=1,000
+
+  6. [guided step] Step 4b · total interest
+     Prompt: "How many of those dollars are interest?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 832.58
+     Predicted wrong answers: NOINTDEBT=0
+
+  7. [choice] Step 5 · paying only $18
+     Prompt: "Now say you pay only $18 a month. What happens?"
+     Input: Pick one:
+        - It’s paid off in under 5 years
+        - It’s paid off in 5 to 10 years
+        - It’s paid off, but it takes over 10 years
+        - It never gets paid off
+     Correct option(s): never
+
+DECISION (facilitator): A cluster at month 40 plus a high “all principal” answer both point to ignoring interest on debt.
+
+S15 — Phone Protection Plan
+------------------------------------------------------------------------------
+Module: Skill & bias | Category: Risk & Insurance | Skill families: credit_risk | Version 1
+
+SCENARIO
+A store sells a $60 protection plan for a new phone. If the screen cracks during the year, the plan pays for the whole repair. A repair costs $300. About 1 in 10 phones crack in a year.
+  • Plan: $60 for a year
+  • Screen repair: $300
+  • Phones that crack: about 1 in 10 each year
+
+STEPS
+
+  1. [cold estimate] Step 1a · phones that crack
+     Prompt: "Out of 100 phones, how many do you expect to crack in a year? Tap the phones."
+     Input: Dot grid: tap to fill, 100 phones
+     Correct: 10
+
+  2. [cold estimate] Step 1b · expected repair cost per phone
+     Prompt: "On average, how much repair money do you expect to spend on ONE phone in a year?"
+     Input: Typed number (usd)
+     Correct: 30
+     Predicted wrong answers: WORST=300; DEC=3
+
+  3. [control (arithmetic check)] Step 2a · cracks among 100 students
+     Prompt: "100 students each have this phone. How many cracked screens do you expect in a year?"
+     Input: Typed number (count)
+     Correct: 10
+     Predicted wrong answers: WORST=100
+
+  4. [guided step] Step 2b · total repair cost
+     Prompt: "About how much would all those repairs cost in total?"
+     Input: Typed number (usd)
+     Correct: 3,000
+     Predicted wrong answers: WORST=30,000; DEC=300
+
+  5. [guided step] Step 3 · break-even crack chance
+     Prompt: "At what chance of cracking would the $60 plan cost the same as the repairs you expect? Answer as a percent."
+     Input: Typed number (percent)
+     Correct: 20
+     Predicted wrong answers: RATE=10
+
+  6. ["why" explanation] When it could still make sense
+     Prompt: "When might the plan still make sense, even if it costs more than the repairs you expect? Write a short answer, or skip."
+     Input: Free text (placeholder: "Type a short answer. Please don’t type any names.")
+     (optional step)
+
+DECISION (facilitator): Many $300 answers mean worst-case thinking dominates. Start with expected value.
+
+F1 — The $10K House Flip
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Decision Making | Skill families: feasibility, percent | Version 1
+Ordering rules: {"before":["S4","F5"],"notAdjacent":["S4","S5"]}
+
+SCENARIO
+@flipwithfred (speech) says: "Buy a house for $10,000, fix it up, and sell it for $20,000. Easy $10,000 profit!"
+  • Buy price: $10,000
+  • Repairs: $6,000
+  • Buying costs: $500
+  • Holding costs (165 days): $1,000
+  • Sale price: $20,000
+  • Selling costs: 8% of the sale price
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this claim? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [choice] Step 1 · where would the money come from
+     Prompt: "Where would you get $10,000 to buy the house?"
+     Input: Pick one:
+        - My savings
+        - A loan
+        - Parents or family
+        - Somewhere else
+
+  3. [choice] Step 2 · why would the seller sell low
+     Prompt: "Why would a seller take half of what the finished house is worth? Pick all that could be true."
+     Input: Pick all that apply:
+        - The house needs a lot of work
+        - It is in a hard-to-sell place
+        - It may have hidden problems
+        - The seller isn’t paying attention
+        - Something else
+
+  4. ["why" explanation] Step 2 · your reason
+     Prompt: "Anything else you’d want to know about why the price is so low? Write a short answer, or skip."
+     Input: Free text (placeholder: "Type a short answer. Please don’t type any names.")
+     (optional step)
+
+  5. [control (arithmetic check)] Step 3 · selling costs
+     Prompt: "Selling costs are 8% of the sale price. How many dollars is that when the house sells for $20,000?"
+     Input: Typed number (usd)
+     Correct: 1,600
+     Predicted wrong answers: PAD=8; DEC=160
+
+  6. [guided step] Step 4a · build the deal
+     Prompt: "Which of these are part of what you actually pay in this deal? Tap the ones that count."
+     Input: Sort cards into "What counts in this deal" from "Cards":
+        - Buy price — $10,000
+        - Repairs — $6,000
+        - Buying costs — $500
+        - Holding costs (165 days) — $1,000
+        - Selling costs — 8% of the sale price
+        - A fancy new mailbox — $150 [distractor]
+        - A lucky charm — $20 [distractor]
+
+  7. [guided step] Step 4b · net profit
+     Prompt: "After everything you counted, how much money do you actually make? (The sale price is $20,000.)"
+     Input: Typed number (usd)
+     Correct: 900
+     Predicted wrong answers: GROSS=10,000; MISS=4,000; MISS=3,500; MISS=2,500; MISS=2,400
+
+  8. [guided step] Step 5a · total cash in
+     Prompt: "In total, how much money do you put into the deal? Count everything you pay, including the selling costs."
+     Input: Typed number (usd)
+     Correct: 19,100
+     Predicted wrong answers: MISS=17,500; MISS=16,000; GROSS=10,000
+
+  9. [guided step] Step 5b · return on that money
+     Prompt: "What percent do you earn on the money you put in? (Profit ÷ total cash in.)"
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 4.71
+     Predicted wrong answers: MISS=5.14; GROSS=100
+
+  10. [guided step] Step 6 · yearly rate
+     Prompt: "The whole deal takes 165 days. If you earned that same percent again and again, about what would it be in a full year (365 days)?"
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 10.42
+     Predicted wrong answers: GROSS=221.2
+
+  11. [guided step] Step 7 · break-even sale price
+     Prompt: "Selling costs are 8% of whatever the sale price is. What is the lowest sale price where you still make $0 profit?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 19,021.74
+     Predicted wrong answers: MISS=17,500
+
+  12. [choice] Step 8a · repairs cost more
+     Prompt: "The repairs end up costing $3,000 more than planned. Does the flip still make money?"
+     Input: Pick one:
+        - Yes, it still makes money
+        - No, it loses money
+     Correct option(s): no
+
+  13. [guided step] Step 8b · how much
+     Prompt: "How many dollars does it make or lose? Type the number without a minus sign."
+     Input: Typed number (usd)
+     Correct: 2,100
+     Predicted wrong answers: GROSS=7,000
+
+  14. [choice] Step 9 · the 70% rule
+     Prompt: "Some investors use a “70% rule”: pay at most 70% of what the finished house will sell for, minus the repairs. Does a $10,000 buy price pass this rule?"
+     Input: Pick one:
+        - Yes, it passes
+        - No, it doesn’t pass
+     Correct option(s): no
+
+  15. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is the claim?"
+     Input: Believability dial 1–5
+
+  16. [choice] Step 10 · what to check first
+     Prompt: "What would you check first before trusting this claim?"
+     Input: Pick one:
+        - All the costs, written down
+        - What similar houses really sold for
+        - What an inspector finds
+        - Who is making the claim, and what they gain
+        - Nothing, it sounds fine
+
+DECISION (facilitator): If most students stack only repairs, cost-stack awareness is the first thing to teach. A big high-confidence-still-believes group makes “rate the claim before you compute it” the hook for the workshop.
+NOTES:
+  - Scenario numbers (repairs, buying, holding, 8% selling costs, 165 days) are inputs from the spec, not market facts.
+  - Order: this problem’s gut rating comes before S4 and F5 (my reading of “before any other cost-related item”).
+  - Step 8 is split into a yes/no and an amount because the keypad has no minus sign.
+
+F2 — $500 into $50,000
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Investing | Skill families: feasibility, compounding | Version 1
+
+SCENARIO
+@moneymoves_jay (post) says: "I turned $500 into $50,000 in one year trading. Anyone can do it."
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this post? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [control (arithmetic check)] Step 2 · how many times bigger
+     Prompt: "How many times bigger is $50,000 than $500?"
+     Input: Typed number (times)
+     Correct: 100
+     Predicted wrong answers: DEC=10; DEC=1,000
+
+  3. [cold estimate] Step 3 · monthly growth guess
+     Prompt: "To do this in 12 months, about how much would the money need to grow EACH month? Tap the meter."
+     Input: Number line, log, 1 to 100 percent; typed box alongside
+     Correct: 46.78
+     Predicted wrong answers: LIN=8.33
+
+  4. [guided step] Step 4 · actual monthly rate
+     Prompt: "Now work it out. What monthly growth turns $500 into $50,000 in 12 months? You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 46.78
+     Predicted wrong answers: LIN=8.33; LIN=825
+
+  5. [control (arithmetic check)] Step 5 · savings account monthly growth
+     Prompt: "A savings account pays 4.2% a year. About how much is that per month, in percent?"
+     Input: Typed number (percent)
+     Correct: 0.35
+     Predicted wrong answers: DEC=4.2
+
+  6. ["why" explanation] Why only this person?
+     Prompt: "Why might you hear about this person, and not about the others who tried and lost money?"
+     Input: Free text (placeholder: "Type a short answer. Please don’t type any names.")
+     (optional step)
+
+  7. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is the post?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): A cluster near 8% shows linear thinking about growth. A large “absent” survivorship bar is a teaching hook.
+NOTES:
+  - Rates: 46.8%/month = 100^(1/12) − 1. Linear guess ≈ 100% ÷ 12 = 8.3%.
+
+F3 — Millionaire by 30
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Investing | Skill families: feasibility, compounding | Version 1
+
+SCENARIO
+@millionaire_mike (chat) says: "Save $200 every month starting at 16 and you’ll be a millionaire by 30. Easy!"
+  • Saved each month: $200
+  • Interest rate: 7% a year, added monthly
+  • Time: 14 years (age 16 to 30)
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this claim? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [cold estimate] Step 1 · balance guess
+     Prompt: "Using the numbers above, about how much will be in the account at age 30? Tap the line."
+     Input: Number line, log, 10,000 to 5,000,000 usd; typed box alongside
+     Correct: 56,807.34
+     Predicted wrong answers: CLAIM=1,000,000; NOINT=33,600
+
+  3. [control (arithmetic check)] Step 2 · total you put in
+     Prompt: "How much money in total do you put in over the 14 years?"
+     Input: Typed number (usd)
+     Correct: 33,600
+     Predicted wrong answers: DEC=3,360
+
+  4. [guided step] Step 3 · balance at 7%
+     Prompt: "Now work it out. How much is in the account after 14 years at 7% a year, added monthly? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 56,807.34
+     Predicted wrong answers: NOINT=33,600
+
+  5. [guided step] Step 4 · how many times too high
+     Prompt: "The claim says $1,000,000. How many times bigger is that than your answer to Step 3?"
+     Input: Typed number (times)
+     (calculator available)
+     Correct: 17.6
+
+  6. [guided step] Step 5 · saving needed
+     Prompt: "About how much would you need to save EACH MONTH, at 7%, to have $1,000,000 after 14 years? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 3,520.67
+     Predicted wrong answers: LIN=5,952
+
+  7. [guided step] Step 6 · return needed
+     Prompt: "What yearly return (added monthly) would make $200 a month reach $1,000,000 in 14 years? Answer as a percent. You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 36.47
+     Predicted wrong answers: LIN=205
+
+  8. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is the claim?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): If students who underestimated compounding in S6 overestimate here, they are reacting to the story, not the math.
+NOTES:
+  - Step 6 assumes the return is added every month, the same convention as S8.
+
+F4 — “12% a Month, Guaranteed”
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Investing | Skill families: feasibility, compounding | Version 1
+
+SCENARIO
+Unknown number (message) says: "Invest with us. We pay 12% EVERY month. Guaranteed! Send $500 today."
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this message? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [cold estimate] Step 2 · yearly equivalent guess
+     Prompt: "If money grows 12% EVERY month, about what is that over a whole year? Tap the line."
+     Input: Number line, log, 10 to 1,000 percent; typed box alongside
+     Correct: 289.6
+     Predicted wrong answers: LIN=144
+
+  3. [guided step] Step 3 · actual yearly equivalent
+     Prompt: "Now work it out. If $100 grows 12% each month for 12 months, how many percent is that for the year? You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 289.6
+     Predicted wrong answers: LIN=144
+
+  4. [guided step] Step 4 · times a savings account
+     Prompt: "A savings account pays 4.2% a year. How many times more than the savings account does this pay?"
+     Input: Typed number (times)
+     (calculator available)
+     Correct: 68.95
+     Predicted wrong answers: LIN=34.29
+
+  5. [guided step] Step 5 · what I would ask
+     Prompt: "Tap the things you would do or ask before sending money. Put the most important first."
+     Input: Sort cards into "What I would do first" from "Cards":
+        - Ask: where does the money come from?
+        - Ask: is the company registered?
+        - Ask: can I take my money out any time?
+        - Ask: who else has been paid?
+        - Say: sounds great, I’d join [distractor]
+
+  6. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is the message?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): A big “sounds great, I’d join” bar after the math means the numbers didn’t change minds. Use the red-flag questions as the teaching frame.
+
+F5 — Sneaker Resale
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Employment & Income | Skill families: feasibility, percent | Version 1
+
+SCENARIO
+@sneakerking_dre (post) says: "Bought sneakers for $150. Sold them for $220. Easy $70! Do it every week."
+  • Bought for: $150
+  • Sold for: $220
+  • App fee: 12% of the sale price
+  • Shipping: $12
+  • Time spent: 3 hours
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is “easy money”? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [cold estimate] Step 1 · profit guess
+     Prompt: "About how much money does this person really keep? Tap the line."
+     Input: Number line, linear, 0 to 100 usd; typed box alongside
+     Correct: 31.6
+     Predicted wrong answers: GROSS=70; MISS=43.6; MISS=58
+
+  3. [control (arithmetic check)] Step 2 · the app fee
+     Prompt: "The app takes 12% of the $220 sale price. How many dollars is the fee?"
+     Input: Typed number (usd)
+     Correct: 26.4
+     Predicted wrong answers: PAD=12; DEC=2.64
+
+  4. [guided step] Step 3a · profit stacker
+     Prompt: "Which of these should count when you work out the profit? Tap the ones that count."
+     Input: Sort cards into "What counts in the profit" from "Cards":
+        - Sale price — $220
+        - What you paid for them — $150
+        - App fee — 12% of the sale price
+        - Shipping — $12
+        - How cool the sneakers are [distractor]
+
+  5. [guided step] Step 3b · profit
+     Prompt: "After everything you counted, how much profit does this person make?"
+     Input: Typed number (usd)
+     Correct: 31.6
+     Predicted wrong answers: GROSS=70; MISS=43.6; MISS=58
+
+  6. [guided step] Step 4 · profit per hour
+     Prompt: "It took 3 hours in total. How much is the profit for each hour?"
+     Input: Typed number (usd)
+     Correct: 10.53
+     Predicted wrong answers: GROSS=23.33; MISS=14.53
+
+  7. [choice] Step 5 · compared to a part-time job
+     Prompt: "Is that hourly profit more than, about the same as, or less than a part-time job?"
+     Input: Pick one:
+        - More than a part-time job
+        - About the same
+        - Less than a part-time job
+
+  8. [guided step] Step 5 · part-time wage near you
+     Prompt: "About how much per hour does a part-time job pay near you?"
+     Input: Typed number (usd)
+
+  9. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is “easy money”?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): Many $70 answers mean “profit” is being read as sale price minus purchase price.
+NOTES:
+  - Fee, shipping and time are inputs from the spec, not market facts.
+
+F6 — The Lawn Business
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Employment & Income | Skill families: feasibility, arithmetic | Version 1
+
+SCENARIO
+@lawnboss_sam (post) says: "Mow 5 lawns a day, 30 days a month, $40 a lawn. That’s $6,000 a month!"
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this claim? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [control (arithmetic check)] Step 2 · money per day in the claim
+     Prompt: "The claim says 5 lawns a day at $40 each. How much money a day is that?"
+     Input: Typed number (usd)
+     Correct: 200
+     Predicted wrong answers: DEC=20
+
+  3. [cold estimate] Step 3 · your real month
+     Prompt: "Now plan a REAL month. Tap the days you would really mow, and how many lawns you would do each day. Each lawn pays $40."
+     Input: Calendar (count), 30 Days, count of lawns per day
+     Correct: 1,548
+     Predicted wrong answers: CLAIM=6,000; MISS=1,298
+
+  4. [guided step] Step 4 · monthly costs
+     Prompt: "Mowing costs money too: fuel, blades, repairs. About how much would that cost you in a month?"
+     Input: Typed number (usd)
+
+  5. [choice] Step 5 · least realistic part
+     Prompt: "Which part of the claim is the LEAST realistic?"
+     Input: Pick one:
+        - Mowing 30 days a month
+        - 5 lawns every day
+        - Not counting any costs
+        - $40 for every lawn
+        - Something else
+
+  6. [rating after the math] Rating after the math
+     Prompt: "Now that you have planned a real month, how believable is the claim?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): A high-revenue cluster near $6,000 means students accept a claim’s assumptions without questioning them.
+NOTES:
+  - The realistic $1,548 revenue and $1,298 profit-after-costs lines are scenario assumptions, not market facts.
+  - $1,548 is not a multiple of the $40 lawn price, so no student’s calendar can land on it exactly. It is a reference line, not a target.
+
+F7 — The $1 Trial
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Spending & Saving | Skill families: feasibility, arithmetic | Version 1
+
+SCENARIO
+StreamBox (ad) says: "Try StreamBox for just $1 for your first month! Then $14.99 a month."
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is “just $1”? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [cold estimate] Step 1 · months at full price
+     Prompt: "You sign up and never cancel. Tap every month in your first year when you pay the full $14.99."
+     Input: Calendar (multi), 12 Months
+     Correct: 11
+
+  3. [guided step] Step 1b · first-year total
+     Prompt: "How much do you pay in total over the first 12 months?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 165.89
+     Predicted wrong answers: FRAME=1; NOTRIAL=179.88
+
+  4. [guided step] Step 2 · average per month
+     Prompt: "What is the average you pay per month over that first year?"
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 13.82
+     Predicted wrong answers: FRAME=1; NOTRIAL=14.99
+
+  5. [choice] Step 3 · is the $1 fair
+     Prompt: "How does the “$1” in the ad compare with what you really pay over the year?"
+     Input: Pick one:
+        - The $1 is misleading
+        - The $1 is accurate
+        - It depends
+
+  6. [choice] Step 4 · what to check
+     Prompt: "Before signing up, what would you check? Tap all that you would."
+     Input: Pick all that apply:
+        - When and how it renews
+        - How and when to cancel
+        - The price after the trial
+        - Who to contact if there’s a problem
+        - Nothing, it looks fine
+
+  7. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is “just $1”?"
+     Input: Believability dial 1–5
+
+DECISION (facilitator): If most students pick “nothing” or only the cancel date, renewal terms are the hook.
+NOTES:
+  - Price is illustrative, not a real service’s price.
+
+F8 — Rank the Claims
+------------------------------------------------------------------------------
+Module: Feasibility | Category: Decision Making | Skill families: feasibility | Version 1
+
+SCENARIO
+Five different people made money claims. You will rank them, check the math, and rank them again.
+
+STEPS
+
+  1. [gut rating] First ranking
+     Prompt: "Put the claims in order, from the MOST believable at the top to the LEAST believable at the bottom."
+     Input: Rank cards (top: "Most believable", bottom: "Least believable"):
+        - My savings account pays 4.2% a year.
+        - I bought a house for $10,000, fixed it up, and sold it 165 days later. After all costs I made $900 on the $19,100 I put in.
+        - $200 in an account grows to $2,000 in 10 years.
+        - Invest with us: we pay 12% every month, guaranteed.
+        - I turned $500 into $50,000 in one year.
+
+  2. [control (arithmetic check)] Claim A · yearly growth
+     Prompt: "Claim A: “My savings account pays 4.2% a year.” About what yearly growth is that, as a percent?"
+     Input: Typed number (percent)
+     Correct: 4.2
+
+  3. [guided step] Claim B · yearly growth
+     Prompt: "Claim B: $900 profit on $19,100 in 165 days. If that kept going, what would it be in a year (365 days)? Answer as a percent. You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 10.42
+
+  4. [guided step] Claim C · yearly growth
+     Prompt: "Claim C: $200 becomes $2,000 in 10 years. What yearly growth does that need, as a percent? You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 25.89
+     Predicted wrong answers: LIN=80
+
+  5. [guided step] Claim D · yearly growth
+     Prompt: "Claim D: 12% every month for 12 months. What is that for the whole year, as a percent? You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 289.6
+     Predicted wrong answers: LIN=144
+
+  6. [guided step] Claim E · yearly growth
+     Prompt: "Claim E: $500 becomes $50,000 in one year. How many percent is the growth? You can use a calculator."
+     Input: Typed number (percent)
+     (calculator available)
+     Correct: 9,900
+     Predicted wrong answers: DEC=10,000
+
+  7. [rating after the math] Second ranking
+     Prompt: "Now that you have checked the math, put the claims in order again: MOST believable at the top, LEAST believable at the bottom."
+     Input: Rank cards (top: "Most believable", bottom: "Least believable"):
+        - My savings account pays 4.2% a year.
+        - I bought a house for $10,000, fixed it up, and sold it 165 days later. After all costs I made $900 on the $19,100 I put in.
+        - $200 in an account grows to $2,000 in 10 years.
+        - Invest with us: we pay 12% every month, guaranteed.
+        - I turned $500 into $50,000 in one year.
+
+DECISION (facilitator): A low first-ranking agreement with a high second one means the math works but intuition doesn’t. Open with the most mis-ranked claim.
+NOTES:
+  - Computed order = least to most yearly growth needed (A, B, C, D, E). It ranks how demanding each claim is, not whether it is a scam.
+
+H1 — “$200 Becomes $2,000”
+------------------------------------------------------------------------------
+Module: Hybrid | Category: Investing | Skill families: feasibility, compounding | Version 1
+
+SCENARIO
+@early_bird_invests (chat) says: "Put $200 in an account that pays 8% a year. In 10 years it becomes $2,000. Start early!"
+
+STEPS
+
+  1. [gut rating] Gut rating
+     Prompt: "How believable is this claim? Go with your gut."
+     Input: Believability dial 1–5
+
+  2. [cold estimate] Step 1 · balance guess
+     Prompt: "About how much would $200 at 8% a year be worth after 10 years? Tap the line."
+     Input: Number line, linear, 0 to 3,000 usd; typed box alongside
+     Correct: 431.78
+     Predicted wrong answers: LIN=360; CLAIM=2,000
+
+  3. [control (arithmetic check)] Step 2 · balance after 1 year
+     Prompt: "How much money is in the account after 1 year?"
+     Input: Typed number (usd)
+     Correct: 216
+     Predicted wrong answers: INTONLY=16; PAD=208
+
+  4. [guided step] Step 3 · actual balance after 10 years
+     Prompt: "Now work it out. How much is in the account after 10 years at 8% a year? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 431.78
+     Predicted wrong answers: LIN=360; CLAIM=2,000
+
+  5. [guided step] Step 4 · rate the claim would need
+     Prompt: "About what yearly interest rate would it take to turn $200 into $2,000 in 10 years? Tap the line."
+     Input: Number line, linear, 0 to 100 percent; typed box alongside
+     Correct: 25.89
+     Predicted wrong answers: LIN=80
+
+  6. [rating after the math] Rating after the math
+     Prompt: "Now that you have worked through it, how believable is the claim?"
+     Input: Believability dial 1–5
+
+  7. [choice] What I’d ask
+     Prompt: "What would you ask the person who said this?"
+     Input: Pick one:
+        - What interest rate does the account really pay?
+        - Which account is this, and is it real?
+        - Can you show me your statements?
+        - What do you get if I sign up?
+        - Nothing, it sounds fine
+
+DECISION (facilitator): The “doesn’t compound well, believes the claim” group is the highest-risk one.
+NOTES:
+  - Shown only after S6 so the claim cannot anchor S6 (order rule on S6).
+
+H2 — The Doubling Streak
+------------------------------------------------------------------------------
+Module: Hybrid | Category: Investing | Skill families: compounding, feasibility | Version 1
+
+SCENARIO
+A game pays you every day for 20 days. You pick one way to be paid.
+  • Option A: $400 every day
+  • Option B: 2¢ on day 1, 4¢ on day 2, 8¢ on day 3… it doubles every day
+
+STEPS
+
+  1. [choice] Step 1a · which pays more
+     Prompt: "After all 20 days, which option pays more in total?"
+     Input: Pick one:
+        - Option A: $400 every day
+        - Option B: it doubles every day
+     Correct option(s): b
+
+  2. [cold estimate] Step 1b · best guess of Option B’s total
+     Prompt: "Give your best guess: how much does Option B pay in total over the 20 days?"
+     Input: Typed number (usd)
+     Correct: 20,971.5
+     Predicted wrong answers: LIN=400
+
+  3. [control (arithmetic check)] Step 2 · day 5 reward
+     Prompt: "How much does Option B pay on day 5? (It starts at 2¢ and doubles each day.)"
+     Input: Typed number (usd)
+     Correct: 0.32
+     Predicted wrong answers: LIN=0.1
+
+  4. [guided step] Step 3 · total through day 10
+     Prompt: "How much has Option B paid in total after 10 days? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 20.46
+     Predicted wrong answers: LIN=0.2
+
+  5. [guided step] Step 4 · day Option B catches up
+     Prompt: "On which day does Option B’s TOTAL so far first beat Option A’s total so far? Tap the day."
+     Input: Calendar (single), 20 Days
+     Correct: 19
+     Predicted wrong answers: LIN=12
+
+  6. [guided step] Step 5a · Option B total at day 20
+     Prompt: "After 20 days, how much has Option B paid in total? You can use a calculator."
+     Input: Typed number (usd)
+     (calculator available)
+     Correct: 20,971.5
+     Predicted wrong answers: LIN=400
+
+  7. [guided step] Step 5b · Option A total at day 20
+     Prompt: "After 20 days, how much has Option A paid in total?"
+     Input: Typed number (usd)
+     Correct: 8,000
+     Predicted wrong answers: DEC=800
+
+  8. [choice] What I would want to know
+     Prompt: "An app says “your money doubles every day.” What would you want to know? Tap all that you would."
+     Input: Pick all that apply:
+        - How long does it keep doubling?
+        - Where does the money come from?
+        - Is anyone checking that the app is real?
+        - Can I take my money out?
+        - Nothing, it sounds great
+
+DECISION (facilitator): A big “Option A pays more” bar alongside low guesses shows the exponential-growth gap clearly. It’s a strong opening demonstration.
+NOTES:
+  - Option A pays a fixed $400 a day; Option B starts at 2¢. Day 19 is where B’s running total first passes A’s.
+
+==============================================================================
+ERROR-CODE GLOSSARY (auto-coded wrong-answer patterns)
+------------------------------------------------------------------------------
+CORR — Correct (family: none)
+UNK — Unclassified (family: none)
+PAD — Percent read as dollars (family: percent)
+HALF — “25% = half” (family: percent)
+DEC — Decimal slip (family: arithmetic)
+DAP — Discount given as the price (family: percent)
+NOTAX — Tax left out (family: percent)
+ADD — Adding error (family: arithmetic)
+LIN — Linear growth (family: compounding)
+GROSS — Gross, costs ignored (family: feasibility)
+MISS — Missing costs (family: feasibility)
+CLAIM — Took the claim at face value (family: feasibility)
+INTONLY — Gave the interest, not the balance (family: arithmetic)
+COMP — Compounded when interest is paid out (family: compounding)
+NOINT — No interest expected (family: compounding)
+SAMEASCOMP — Simple and compound treated the same (family: compounding)
+NOTIME — Time horizon ignored (family: compounding)
+REVPCT — Reverse percent: added the fee % to the target (family: percent)
+ILLUSION — Money illusion: $100 stays $100 (family: percent)
+FRAME — Went by the headline price (family: feasibility)
+NOTRIAL — Trial discount ignored (family: feasibility)
+WORST — Worst case, not expected value (family: credit_risk)
+RATE — Used the crack chance itself (family: credit_risk)
+NOINTDEBT — Interest on debt ignored (family: credit_risk)
